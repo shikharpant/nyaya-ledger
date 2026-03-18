@@ -1,0 +1,220 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://git-for-law.example/schemas/rule_node.json",
+    "title": "RuleNode",
+    "description": "A Rule in the Legal AST (e.g., Rule 8 of CGST Rules)",
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string",
+            "description": "Unique identifier, e.g., 'CGST_Rules/Rule_8'"
+        },
+        "node_type": {
+            "type": "string",
+            "const": "rule"
+        },
+        "label": {
+            "type": "string",
+            "description": "Rule number, e.g., '8' or '14A'"
+        },
+        "heading": {
+            "type": "string",
+            "description": "Rule title/heading"
+        },
+        "content": {
+            "type": "string",
+            "description": "Full text of the rule (intro before sub-rules)"
+        },
+        "version": {
+            "type": "string",
+            "default": "v1"
+        },
+        "valid_from": {
+            "type": "string",
+            "format": "date-time"
+        },
+        "valid_to": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "format": "date-time"
+        },
+        "content_hash": {
+            "type": [
+                "string",
+                "null"
+            ]
+        },
+        "source_mutation": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "description": "Mutation that created this version"
+        },
+        "subrules": {
+            "type": "array",
+            "items": {
+                "$ref": "#/$defs/subrule"
+            }
+        },
+        "provisos": {
+            "type": "array",
+            "items": {
+                "$ref": "#/$defs/proviso"
+            }
+        },
+        "explanations": {
+            "type": "array",
+            "items": {
+                "$ref": "#/$defs/explanation"
+            }
+        },
+        "edges": {
+            "type": "array",
+            "items": {
+                "$ref": "#/$defs/edge"
+            },
+            "description": "Semantic edges to other nodes"
+        }
+    },
+    "required": [
+        "id",
+        "label",
+        "heading",
+        "valid_from"
+    ],
+    "$defs": {
+        "subrule": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "label": {
+                    "type": "string",
+                    "description": "e.g., '(1)'"
+                },
+                "content": {
+                    "type": "string"
+                },
+                "provisos": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/$defs/proviso"
+                    }
+                },
+                "clauses": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/$defs/clause"
+                    }
+                },
+                "edges": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/$defs/edge"
+                    }
+                }
+            },
+            "required": [
+                "id",
+                "label",
+                "content"
+            ]
+        },
+        "proviso": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "label": {
+                    "type": "string",
+                    "description": "e.g., 'First Proviso'"
+                },
+                "ordinal": {
+                    "type": "integer"
+                },
+                "content": {
+                    "type": "string",
+                    "description": "Starts with 'Provided that...'"
+                }
+            },
+            "required": [
+                "id",
+                "ordinal",
+                "content"
+            ]
+        },
+        "clause": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "label": {
+                    "type": "string",
+                    "description": "e.g., '(a)', '(i)'"
+                },
+                "content": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "id",
+                "label",
+                "content"
+            ]
+        },
+        "explanation": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "label": {
+                    "type": "string",
+                    "default": "Explanation"
+                },
+                "content": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "id",
+                "content"
+            ]
+        },
+        "edge": {
+            "type": "object",
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "enum": [
+                        "REQUIRES_FORM",
+                        "MUTATIS_MUTANDIS",
+                        "SUBJECT_TO",
+                        "NOTWITHSTANDING",
+                        "READ_WITH",
+                        "REFERS_TO",
+                        "SUPERSEDES"
+                    ]
+                },
+                "target": {
+                    "type": "string",
+                    "description": "Target node ID"
+                },
+                "properties": {
+                    "type": "object",
+                    "additionalProperties": true
+                }
+            },
+            "required": [
+                "type",
+                "target"
+            ]
+        }
+    }
+}

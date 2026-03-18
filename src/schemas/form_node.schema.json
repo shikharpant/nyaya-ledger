@@ -1,0 +1,95 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://git-for-law.example/schemas/form_node.json",
+    "title": "FormNode",
+    "description": "A Form in the Legal AST with hybrid storage (graph + JSON schema payload)",
+    "type": "object",
+    "properties": {
+        "form_id": {
+            "type": "string",
+            "description": "Unique identifier, e.g., 'FORM_GST_REG_01'"
+        },
+        "form_number": {
+            "type": "string",
+            "description": "Official form number, e.g., 'GST REG-01'"
+        },
+        "title": {
+            "type": "string",
+            "description": "Form title"
+        },
+        "version": {
+            "type": "string",
+            "default": "v1"
+        },
+        "valid_from": {
+            "type": "string",
+            "format": "date-time"
+        },
+        "valid_to": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "format": "date-time"
+        },
+        "sections": {
+            "type": "array",
+            "items": {
+                "$ref": "#/$defs/form_section"
+            }
+        }
+    },
+    "required": [
+        "form_id",
+        "form_number",
+        "title",
+        "valid_from",
+        "sections"
+    ],
+    "$defs": {
+        "form_section": {
+            "type": "object",
+            "description": "A section within a form (e.g., Part A). Fields stored as JSON Schema.",
+            "properties": {
+                "section_id": {
+                    "type": "string",
+                    "description": "e.g., 'FORM_GST_REG_01/Part_A'"
+                },
+                "section_label": {
+                    "type": "string",
+                    "description": "e.g., 'Part A'"
+                },
+                "heading": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "schema_payload": {
+                    "type": "object",
+                    "description": "JSON Schema defining fields in this section. This is the HYBRID design - fields are NOT graph nodes.",
+                    "properties": {
+                        "type": {
+                            "type": "string",
+                            "const": "object"
+                        },
+                        "properties": {
+                            "type": "object"
+                        },
+                        "required": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "required": [
+                "section_id",
+                "section_label",
+                "schema_payload"
+            ]
+        }
+    }
+}

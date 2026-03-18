@@ -1,0 +1,139 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://git-for-law.example/schemas/mutation.json",
+    "title": "MutationOperation",
+    "description": "A compiled mutation operation from a legal notification",
+    "type": "object",
+    "properties": {
+        "mutation_id": {
+            "type": "string",
+            "description": "Unique ID, e.g., 'mut_18_2025_001'"
+        },
+        "source_notification": {
+            "type": "string",
+            "description": "Source document reference"
+        },
+        "notification_date": {
+            "type": "string",
+            "format": "date-time"
+        },
+        "effective_date": {
+            "type": "string",
+            "format": "date-time"
+        },
+        "target": {
+            "type": "object",
+            "properties": {
+                "node_path": {
+                    "type": "string",
+                    "description": "Full path, e.g., 'CGST_Rules/Rule_10/SubRule_1'"
+                },
+                "anchor": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "description": "Text anchor for SPLICE operations"
+                },
+                "anchor_position": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "enum": [
+                        "before",
+                        "after",
+                        null
+                    ]
+                }
+            },
+            "required": [
+                "node_path"
+            ]
+        },
+        "operation": {
+            "type": "string",
+            "enum": [
+                "INSERT_CHILD",
+                "INSERT_SIBLING",
+                "SPLICE",
+                "SUBSTITUTE",
+                "DELETE",
+                "OMIT",
+                "REPEAL",
+                "RENAME"
+            ]
+        },
+        "payload": {
+            "type": "object",
+            "properties": {
+                "label": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "heading": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "content": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "node_type": {
+                    "type": [
+                        "string",
+                        "null"
+                    ]
+                },
+                "schema_patch": {
+                    "type": [
+                        "object",
+                        "null"
+                    ],
+                    "description": "For form schema mutations"
+                }
+            }
+        },
+        "position": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "enum": [
+                "before",
+                "after",
+                "first",
+                "last",
+                null
+            ]
+        },
+        "anchor_child_label": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "description": "For INSERT_CHILD, the sibling to position relative to"
+        },
+        "original_text": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "description": "Original amendment text from notification"
+        }
+    },
+    "required": [
+        "mutation_id",
+        "source_notification",
+        "effective_date",
+        "target",
+        "operation",
+        "payload"
+    ]
+}
