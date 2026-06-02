@@ -14,3 +14,14 @@ node_modules/
 dist/
 build/
 derived/
+
+# Local legal source/corpus artifacts. These can be regenerated or restored
+# locally and are intentionally not part of the main GitHub repository.
+data/
+sources/
+corpus/
+
+# Large extracted/downloaded legal artifacts should stay local unless published
+# separately as release assets or a dedicated dataset.
+*.pdf
+*.txt

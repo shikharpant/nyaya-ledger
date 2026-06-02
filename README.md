@@ -66,7 +66,12 @@ python3 main.py html build
 python3 main.py pipeline verify
 ```
 
-Current local corpus status as of 2026-06-03:
+Current local artifact status as of 2026-06-03:
+
+The main GitHub repository intentionally tracks code, schemas, docs, scripts,
+and tests only. The generated legal data directories `data/`, `sources/`,
+`corpus/`, and `derived/` are local artifacts ignored by Git. The local
+workspace used for the latest verification contains:
 
 - Canonical corpus: 1,465 XML documents under `corpus/`.
 - Source archives: 1,356 source archives under `sources/`.
@@ -79,7 +84,7 @@ Current local corpus status as of 2026-06-03:
   unresolved targets across 2,301 occurrences. These remain warnings; strict
   unresolved-reference gating should stay off until the allowlist and remaining
   base-law ingestion are complete.
-- Source corpus material: 130 top-level base-law JSON files in
+- Raw source material: 130 top-level base-law JSON files in
   `data/Law/base_laws`, plus residual Finance Acts material under
   `data/Law/base_laws/residual`.
 
