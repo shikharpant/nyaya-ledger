@@ -13,7 +13,7 @@ from .source_archive import read_metadata_yaml
 from .structure_parser import text_hash
 
 
-FORM_HEADING_RE = re.compile(r"\bFORM\s+GST\s+([A-Z]{2,4})\s*-?\s*([0-9]{1,2}[A-Z]?)\b", re.IGNORECASE)
+FORM_HEADING_RE = re.compile(r"\bFORM\s+GST\s+([A-Z]{2,5})\s*-?\s*([0-9]{1,3}[A-Z]?)\b", re.IGNORECASE)
 
 
 def _form_id(text: str) -> str | None:

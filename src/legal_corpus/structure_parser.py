@@ -121,7 +121,7 @@ def _starts_new_block(line: str, current_lines: list[str]) -> bool:
         return True
     if re.match(r"(no\.|notification no\.)\s*\d+", lowered):
         return True
-    if re.match(r"\d+\.\s+", stripped):
+    if re.match(r"\d+[A-Z]?\.\s*", stripped):
         return True
     if re.match(r"\*?\s*section\s+\d+[A-Z]?\b", stripped, flags=re.IGNORECASE):
         return True
@@ -163,7 +163,11 @@ def _line_aware_block_spans(text: str) -> list[tuple[int, int, str]]:
 
 def _looks_like_act_section(block: str) -> bool:
     stripped = block.strip()
-    match = re.match(r"(?:\*+\s*)?(?:section\s+)?\d+[A-Z]?\.\s+(.+)", stripped, flags=re.DOTALL | re.IGNORECASE)
+    match = re.match(
+        r"(?:\*+\s*)?(?:section\s+)?\d+[A-Z]?(?:\.\s*|\s+-\s+)(.+)",
+        stripped,
+        flags=re.DOTALL | re.IGNORECASE,
+    )
     if not match:
         return False
     heading_text = re.sub(r"\s+", " ", match.group(1)).strip()
@@ -191,7 +195,7 @@ def _looks_like_act_section(block: str) -> bool:
 
 def _looks_like_rule(block: str) -> bool:
     stripped = block.strip()
-    match = re.match(r"(\d+[A-Z]?)\.\s+(.+)", stripped, flags=re.DOTALL)
+    match = re.match(r"(\d+[A-Z]?)(?:\.\s*|\s+-\s+)(.+)", stripped, flags=re.DOTALL)
     if not match:
         return False
     heading_text = re.sub(r"\s+", " ", match.group(2)).strip()
@@ -201,7 +205,7 @@ def _looks_like_rule(block: str) -> bool:
     if lowered.startswith(
         (
             "chapter ",
-            "form ",
+            "form gst ",
             "table ",
             "annexure",
             "notification ",
@@ -259,7 +263,7 @@ def _node_type(block: str, document_type: str = "") -> str:
 
 
 def _label_for_block(index: int, block: str) -> str:
-    number = re.match(r"(?:\*+\s*)?(?:section\s+)?(\d+[A-Z]?)\.", block.strip(), flags=re.IGNORECASE)
+    number = re.match(r"(?:\*+\s*)?(?:section\s+)?(\d+[A-Z]?)(?:\.|\s+-)", block.strip(), flags=re.IGNORECASE)
     if number:
         return number.group(1).lower()
     return str(index)
@@ -314,7 +318,7 @@ def _find_references(text: str, document_type: str = "notification") -> list[dic
     patterns = [
         ("rule", re.compile(r"\brule\s+([0-9]+[A-Z]?)\b", re.IGNORECASE)),
         ("section", re.compile(r"\bsection\s+([0-9]+[A-Z]?)\b", re.IGNORECASE)),
-        ("form", re.compile(r"\bFORM\s+GST\s+([A-Z]{2,4}[-\s]?[0-9]{1,2}[A-Z]?)\b", re.IGNORECASE)),
+        ("form", re.compile(r"\bFORM\s+GST\s+([A-Z]{2,5}\s*-?\s*[0-9]{1,3}[A-Z]?)\b", re.IGNORECASE)),
     ]
     references: list[dict[str, Any]] = []
     for kind, pattern in patterns:
@@ -349,6 +353,38 @@ def _find_references(text: str, document_type: str = "notification") -> list[dic
     return references
 
 
+def _merge_continuation_nodes(text: str, nodes: list[dict[str, Any]], document_type: str) -> list[dict[str, Any]]:
+    if document_type not in {"act", "rules"}:
+        return nodes
+    owner_type = "section" if document_type == "act" else "rule"
+    merged: list[dict[str, Any]] = []
+    current: dict[str, Any] | None = None
+    continuation_types = {"paragraph", "table", "annexure", "statement", "declaration", "form_part", "verification"}
+    for node in nodes:
+        node_type = node.get("type")
+        if node_type == owner_type:
+            if current:
+                current["text_hash"] = text_hash(text[current["start"] : current["end"]])
+                merged.append(current)
+            current = dict(node)
+            continue
+        if current and node_type in continuation_types:
+            end = node.get("end")
+            if isinstance(end, int) and end >= current["end"]:
+                current["end"] = end
+                current["confidence"] = min(float(current.get("confidence", 1.0)), float(node.get("confidence", 1.0)))
+                continue
+        if current:
+            current["text_hash"] = text_hash(text[current["start"] : current["end"]])
+            merged.append(current)
+            current = None
+        merged.append(node)
+    if current:
+        current["text_hash"] = text_hash(text[current["start"] : current["end"]])
+        merged.append(current)
+    return merged
+
+
 def parse_structure_deterministic(extracted: dict[str, Any], document_type: str = "notification") -> dict[str, Any]:
     """Parse extracted text into typed nodes with exact character spans."""
     text = extracted.get("text", "")
@@ -364,6 +400,7 @@ def parse_structure_deterministic(extracted: dict[str, Any], document_type: str 
                 "confidence": 1.0,
             }
         )
+    nodes = _merge_continuation_nodes(text, nodes, document_type)
 
     return {
         "document_type": document_type,

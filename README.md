@@ -66,28 +66,95 @@ python3 main.py html build
 python3 main.py pipeline verify
 ```
 
-Current local corpus status:
+Current local corpus status as of 2026-06-03:
 
-- Local CBIC notification families in `data/Law/GST_Notifications_CBIC` have
-  been ingested and promoted across central tax, integrated tax, union
-  territory tax, compensation cess, and rate-notification categories.
-- Six local Act PDFs have been promoted: Customs Tariff Act, 1975 and Finance
-  Acts for 2022, 2023, 2024, and 2025. These were promoted with quality flags
-  retained because long schedule/table paragraphs are expected in Act PDFs and
-  should stay visible for review.
-- Official base GST sources have also been added under `data/Law/base_laws`:
-  CGST Act, 2017 from CBIC Tax Information HTML; IGST Act, 2017 from India
-  Code PDF; and CBIC CGST Rules, 2017 Part A Rules plus Part B Forms PDFs.
-- `python3 main.py corpus split-forms sources/in/union/forms/cgst-rules-2017-forms`
-  splits the aggregate Part B PDF into individual canonical form XML files.
-- `python3 main.py pipeline verify` currently passes with 1,335 canonical XML
-  documents, 1,226 source archives, 1,332 XML files with source-span
-  validation, 673 provision records, and 13,768 vector chunks.
-- The next high-value source gaps are Income-tax Act, 1961; Customs Act, 1962;
-  Central Excise Act, 1944; remaining CGST/IGST section edge cases; remaining
-  CGST Rules edge cases; and remaining GST forms. Use
-  `derived/references/unresolved_references.json` as the prioritized ingestion
-  queue.
+- Canonical corpus: 1,465 XML documents under `corpus/`.
+- Source archives: 1,356 source archives under `sources/`.
+- Document mix: 137 Act XML documents, 4 CGST Rules XML documents, 107 GST
+  form XML documents, and 1,216 CBIC notification XML documents.
+- Graph export in `derived/graph/corpus_graph.json`: 14,281 nodes and 34,874
+  edges.
+- Search/vector exports: 14,284 search records and 94,787 vector chunks.
+- Reference review in `derived/references/unresolved_references.json`: 1,313
+  unresolved targets across 2,301 occurrences. These remain warnings; strict
+  unresolved-reference gating should stay off until the allowlist and remaining
+  base-law ingestion are complete.
+- Source corpus material: 130 top-level base-law JSON files in
+  `data/Law/base_laws`, plus residual Finance Acts material under
+  `data/Law/base_laws/residual`.
+
+Ingested legal statutes and procedures include:
+
+- GST and indirect tax: CGST Act, 2017; IGST Act, 2017; CGST Rules, 2017;
+  Customs Tariff Act, 1975; GST forms from the CGST Rules Part B PDF; and CBIC
+  central tax, integrated tax, union territory tax, compensation cess, and rate
+  notification families.
+- Direct tax and finance: Income-tax Act, 1961; Income-tax Act, 2025; Indian
+  Income-tax Act, 1922 (repealed); Income-tax Rules, 2026; Wealth-tax Act, 1957;
+  Gift-tax Act, 1958; Interest-tax Act, 1974; Expenditure-tax Act, 1987;
+  Equalisation Levy; Commodities Transaction Tax; Securities Transaction Tax;
+  Direct Tax Vivad se Vishwas Act, 2020; Direct Tax Vivad Se Vishwas Scheme,
+  2024; and Finance Acts for 2022, 2023, 2024, and 2025.
+- Criminal law and procedure: Bharatiya Nyaya Sanhita, 2023; Bharatiya Nagarik
+  Suraksha Sanhita, 2023; Bharatiya Sakshya Adhiniyam, 2023; Indian Penal Code,
+  1860; Indian Evidence Act, 1872; Code of Criminal Procedure, 1973; Prevention
+  of Corruption Act, 1988; Prevention of Money Laundering Act, 2002; and Fugitive
+  Economic Offenders Act, 2018.
+- Corporate, securities, and financial regulation: Companies Act, 1956
+  (repealed); Companies Act, 2013; LLP Act, 2008; Competition Act, 2002; SEBI
+  Act, 1992; Securities Contracts (Regulation) Act, 1956; Depositories Act,
+  1996; SARFAESI Act, 2002; Recovery of Debts and Bankruptcy Act, 1993; Banking
+  Cash Transaction Tax; RBI Act, 1934; IRDA Act, 1999; Credit Information
+  Companies (Regulation) Act, 2005; and Prohibition of Benami Property
+  Transactions Act, 1988.
+- Civil, property, IP, and general law: Indian Contract Act, 1872; Transfer of
+  Property Act, 1882; Registration Act, 1908; Indian Stamp Act, 1899; Indian
+  Trusts Act, 1882; Specific Relief Act, 1963; Limitation Act, 1963; Sale of
+  Goods Act, 1930; Partnership Act, 1932; Hindu Marriage, Succession, Adoption
+  and Maintenance, and Minority and Guardianship Acts; Patents Act, 1970;
+  Copyright Act, 1957; Trade Marks Act, 1999; Designs Act, 2000; Information
+  Technology Act, 2000; and Digital Personal Data Protection Act, 2023.
+- Labour, welfare, environment, and public law: Employees' State Insurance Act,
+  1948; Employees Provident Funds and Miscellaneous Provisions Act, 1952;
+  Employees Compensation Act, 1923; Payment of Wages Act, 1936; Minimum Wages
+  Act, 1948; Payment of Bonus Act, 1965; Payment of Gratuity Act, 1972;
+  Maternity Benefit Act, 1961; Industrial Disputes Act, 1947; Factories Act,
+  1948; Environment Protection Act, 1986; Air Act, 1981; Water Act, 1974; Right
+  to Information Act, 2005; Consumer Protection Act, 2019; Aadhaar Act, 2016;
+  Legal Metrology Act, 2009; and National Green Tribunal Act, 2010.
+
+Recently completed ingestion:
+
+- Income-tax Rules, 2026 is fully ingested at
+  `sources/in/union/rules/income-tax-rules-2026/` and
+  `corpus/in/union/rules/income-tax-rules-2026/rules.xml`: 333 rules and 707
+  cross-references to Income-tax Act sections and other rules.
+- `scripts/ingest_it_act_2025.py` was fixed to read
+  `data/Law/base_laws/income_tax_act_2025.json` instead of the Income-tax Rules
+  JSON, and the Income-tax Act, 2025 corpus was re-ingested.
+- `python3 main.py pipeline verify` and the test suite both pass in the current
+  state: 54 tests passed and pipeline verification is all ok.
+
+Staged source data not yet fully promoted to canonical XML:
+
+- The Income-tax Rules, 2026 PDF is 976 pages and also contains appendices/forms
+  that still need a dedicated appendix/form splitter before separate form
+  promotion.
+- The Income Tax India catalog download completed for all listed Acts:
+  128 downloaded, 2 skipped because already present, and 0 failed downloads.
+- `data/Law/base_laws/residual/finance_acts.json` is a raw aggregate source,
+  not one canonical Act. It has been split into 81 year/variant files under
+  `data/Law/base_laws/residual/finance_acts_split`, with 336 entries retained in
+  `finance_acts_unsplit.json` because their scraped text lacks reliable
+  year/Act metadata.
+- The Indian Stamp Act, 1899 download has 100 unique entries: sections 1-79,
+  inserted alphanumeric provisions, and Schedule I plus Schedule II.
+
+The next high-value work is to split and promote the Income-tax Rules, 2026
+appendices/forms, reduce unresolved GST form and rule references, and add an
+allowlist for expected external references. Use
+`derived/references/unresolved_references.json` as the prioritized ingestion and
+parser-improvement queue.
 
 This creates:
 

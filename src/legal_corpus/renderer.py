@@ -18,12 +18,19 @@ def canonical_subrule_id(rule_label: str, subrule_label: str) -> str:
 
 
 def canonical_form_id(form_number: str) -> str:
-    slug = form_number.lower().replace(" ", "-").replace("_", "-")
+    slug = form_number.lower().replace("_", "-")
+    slug = re.sub(r"\s*-\s*", "-", slug)
+    slug = re.sub(r"\s+", "-", slug)
+    slug = re.sub(r"-{2,}", "-", slug).strip("-")
     return f"/in/union/forms/{slug}"
 
 
 def canonicalize_legacy_reference(reference: str) -> str:
     """Convert prototype IDs into India profile canonical IDs when possible."""
+    canonical_form_match = re.fullmatch(r"/in/union/forms/([0-9A-Za-z_-]+)", reference)
+    if canonical_form_match:
+        return canonical_form_id(canonical_form_match.group(1))
+
     rule_match = re.fullmatch(r"CGST_Rules/Rule_([0-9A-Za-z]+)(?:/SubRule_([0-9A-Za-z]+))?", reference)
     if rule_match:
         rule_label, subrule_label = rule_match.groups()

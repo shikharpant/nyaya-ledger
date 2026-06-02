@@ -284,6 +284,38 @@ def test_structure_parser_resolves_non_gst_act_section_references():
     assert "/in/union/acts/cgst-act-2017/section/9" not in targets
 
 
+def test_structure_parser_detects_compact_rule_headings_and_merges_body():
+    text = (
+        "23. Revocation of cancellation of registration.-(1) Body for rule 23.\n"
+        "Continuation for rule 23.\n"
+        "24.Migration of persons registered under the existing law.-(1) Body for rule 24.\n"
+        "26.Method of authentication.- (1) Body for rule 26.\n"
+        "65. Form and manner of submission of return by an Input Service Distributor.-Every ISD shall submit."
+    )
+
+    structure = parse_structure_deterministic({"text": text, "source_sha256": "seed"}, document_type="rules")
+    rules = [node for node in structure["nodes"] if node["type"] == "rule"]
+
+    assert [node["label"] for node in rules] == ["23", "24", "26", "65"]
+    assert "Continuation for rule 23" in text[rules[0]["start"] : rules[0]["end"]]
+
+
+def test_structure_parser_merges_act_section_body_blocks():
+    text = (
+        "44. Annual return.\n"
+        "(1) Every registered person shall furnish an annual return.\n"
+        "Provided that the Commissioner may exempt a class of persons.\n"
+        "45. Final return.\n"
+        "Every registered person whose registration has been cancelled shall furnish a final return."
+    )
+
+    structure = parse_structure_deterministic({"text": text, "source_sha256": "seed"}, document_type="act")
+    sections = [node for node in structure["nodes"] if node["type"] == "section"]
+
+    assert [node["label"] for node in sections] == ["44", "45"]
+    assert "Provided that the Commissioner" in text[sections[0]["start"] : sections[0]["end"]]
+
+
 def test_act_ingest_renders_section_level_provisions(tmp_path):
     source = tmp_path / "cgst-act.txt"
     source.write_text(
@@ -1036,6 +1068,11 @@ def test_split_forms_archive_writes_individual_form_documents(tmp_path):
     assert (tmp_path / "corpus/in/union/forms/gst-ewb-01/form.xml").exists()
     assert (tmp_path / "corpus/in/union/forms/gst-rfd-01/form.xml").exists()
     assert lookup_canonical_id(tmp_path / "corpus", "/in/union/forms/gst-ewb-01") is not None
+
+
+def test_form_reference_canonicalization_collapses_spaced_hyphens():
+    assert canonicalize_legacy_reference("FORM_GST_ADT___01") == "/in/union/forms/gst-adt-01"
+    assert canonicalize_legacy_reference("/in/union/forms/gst-adt---01") == "/in/union/forms/gst-adt-01"
 
 
 def test_batch_ingest_inventory_previews_and_executes_selected_items(tmp_path):
