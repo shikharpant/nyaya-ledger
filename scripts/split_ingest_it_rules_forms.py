@@ -127,19 +127,11 @@ def find_references_in_text(text: str) -> list[dict]:
         before = text[start_pos : m.start()].lower()
         after = text[m.end() : min(len(text), m.end() + 180)].lower()
 
-        target_act = IT_ACT_1961
-        for act_name, act_id in act_map.items():
+        target_act = IT_ACT_2025
+        for act_name, act_id in sorted(act_map.items(), key=lambda item: -len(item[0])):
             if re.search(rf"^\W*of\s+(?:the\s+)?{re.escape(act_name)}", after):
                 target_act = act_id
                 break
-        else:
-            matches = [
-                (before.rfind(act_name), act_id)
-                for act_name, act_id in act_map.items()
-                if act_name in before
-            ]
-            if matches:
-                target_act = max(matches, key=lambda item: item[0])[1]
         if target_act is None:
             continue
 

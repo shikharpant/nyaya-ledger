@@ -121,9 +121,9 @@ def _starts_new_block(line: str, current_lines: list[str]) -> bool:
         return True
     if re.match(r"(no\.|notification no\.)\s*\d+", lowered):
         return True
-    if re.match(r"\d+[A-Z]?\.\s*", stripped):
+    if re.match(r"[\[(]?\s*\d+[A-Z]?(?:\.|\s+[A-Z])", stripped):
         return True
-    if re.match(r"\*?\s*section\s+\d+[A-Z]?\b", stripped, flags=re.IGNORECASE):
+    if re.match(r"(?:\d+\s+\[\s*)?\*?\s*section\s+(?:\d+\s+\[\s*)?\d+[A-Z]?\b", stripped, flags=re.IGNORECASE):
         return True
     if re.match(r"\d+[A-Z](?:,|\s)", stripped):
         return True
@@ -164,7 +164,7 @@ def _line_aware_block_spans(text: str) -> list[tuple[int, int, str]]:
 def _looks_like_act_section(block: str) -> bool:
     stripped = block.strip()
     match = re.match(
-        r"(?:\*+\s*)?(?:section\s+)?\d+[A-Z]?(?:\.\s*|\s+-\s+)(.+)",
+        r"(?:\d+\s+\[\s*)?(?:\*+\s*)?(?:section\s+(?:\d+\s+\[\s*)?)?\d+[A-Z]?(?:\.\s*|\s+-\s+)(.+)",
         stripped,
         flags=re.DOTALL | re.IGNORECASE,
     )
@@ -195,7 +195,7 @@ def _looks_like_act_section(block: str) -> bool:
 
 def _looks_like_rule(block: str) -> bool:
     stripped = block.strip()
-    match = re.match(r"(\d+[A-Z]?)(?:\.\s*|\s+-\s+)(.+)", stripped, flags=re.DOTALL)
+    match = re.match(r"[\[(]?\s*(\d+[A-Z]?)(?:\.\s*|\s+-\s+|\s+)(.+)", stripped, flags=re.DOTALL)
     if not match:
         return False
     heading_text = re.sub(r"\s+", " ", match.group(2)).strip()
@@ -263,7 +263,11 @@ def _node_type(block: str, document_type: str = "") -> str:
 
 
 def _label_for_block(index: int, block: str) -> str:
-    number = re.match(r"(?:\*+\s*)?(?:section\s+)?(\d+[A-Z]?)(?:\.|\s+-)", block.strip(), flags=re.IGNORECASE)
+    number = re.match(
+        r"[\[(]?\s*(?:\d+\s+\[\s*)?(?:\*+\s*)?(?:section\s+(?:\d+\s+\[\s*)?)?(\d+[A-Z]?)(?:\.|\s+-|\s+)",
+        block.strip(),
+        flags=re.IGNORECASE,
+    )
     if number:
         return number.group(1).lower()
     return str(index)

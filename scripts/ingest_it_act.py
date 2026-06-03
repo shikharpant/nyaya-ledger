@@ -42,6 +42,24 @@ KNOWN_ACT_MAP = {
     "representation of the people act": "/in/union/acts/representation-of-the-people-act-1951",
     "narcotic drugs and psychotropic substances act": "/in/union/acts/narcotic-drugs-and-psychotropic-substances-act-1985",
     "national housing bank act": "/in/union/acts/national-housing-bank-act-1987",
+    "transfer of property act": "/in/union/acts/transfer-of-property-act-1882",
+    "state financial corporations act": "/in/union/acts/state-financial-corporations-act-1951",
+    "industries (development and regulation) act": "/in/union/acts/industries-development-regulation-act-1951",
+    "industries development and regulation act": "/in/union/acts/industries-development-regulation-act-1951",
+    "wealth-tax act": "/in/union/acts/wealth-tax-act-1957",
+    "coal mines provident funds and miscellaneous provisions act": "/in/union/acts/coal-mines-provident-fund-and-miscellaneous-provisions-act-1948",
+    "coal mines provident fund and miscellaneous provisions act": "/in/union/acts/coal-mines-provident-fund-and-miscellaneous-provisions-act-1948",
+    "employees' provident funds and miscellaneous provisions act": "/in/union/acts/employees-provident-funds-and-miscellaneous-provisions-act-1952",
+    "employees provident funds and miscellaneous provisions act": "/in/union/acts/employees-provident-funds-and-miscellaneous-provisions-act-1952",
+    "merchant shipping act": "/in/union/acts/merchant-shipping-act-1958",
+    "sick industrial companies (special provisions) act": "/in/union/acts/sick-industrial-companies-special-provisions-act-1985",
+    "pension fund regulatory and development authority act": "/in/union/acts/pension-fund-regulatory-and-development-authority-act-2013",
+    "indian penal code": "/in/union/acts/indian-penal-code-1860",
+    "industrial disputes act": "/in/union/acts/industrial-disputes-act-1947",
+    "code of criminal procedure": "/in/union/acts/code-of-criminal-procedure-1973",
+    "customs act": "/in/union/acts/customs-act-1962",
+    "indian income-tax act": "/in/union/acts/indian-income-tax-act-1922-repealed",
+    "information technology act": "/in/union/acts/information-technology-act-2000",
     "companies act, 1956": "/in/union/acts/companies-act-1956-repealed",
     "companies act 1956": "/in/union/acts/companies-act-1956-repealed",
     "the companies act, 1956": "/in/union/acts/companies-act-1956-repealed",
@@ -54,26 +72,26 @@ KNOWN_ACT_MAP = {
     "integrated goods and services tax act": "/in/union/acts/igst-act-2017",
     "finance act": None,
     "companies act": "/in/union/acts/companies-act-2013",
-    "customs act": "/in/union/acts/customs-act-1962",
     "customs tariff act": "/in/union/acts/customs-tariff-act-1975",
     "central excise act": "/in/union/acts/central-excise-act-1944",
-    "wealth-tax act": None,
 }
 
 
 def _target_act_from_context(before: str, after: str) -> str | None:
-    for act_name, act_id in KNOWN_ACT_MAP.items():
-        if re.search(rf"^\W*of\s+(?:the\s+)?{re.escape(act_name)}", after):
+    for act_name, act_id in sorted(KNOWN_ACT_MAP.items(), key=lambda item: -len(item[0])):
+        if re.search(rf"^[^.;:]{{0,180}}\bof\s+(?:the\s+)?{re.escape(act_name)}", after):
             return act_id
 
-    matches = [
-        (before.rfind(act_name), act_id)
-        for act_name, act_id in KNOWN_ACT_MAP.items()
-        if act_name in before
-    ]
-    if not matches:
-        return CANONICAL_ID
-    return max(matches, key=lambda item: item[0])[1]
+    if re.search(r"^[^.;:]{0,80}\bof\s+that\s+act\b", after):
+        matches = [
+            (before.rfind(act_name), act_id)
+            for act_name, act_id in KNOWN_ACT_MAP.items()
+            if act_name in before
+        ]
+        if matches:
+            return max(matches, key=lambda item: item[0])[1]
+
+    return CANONICAL_ID
 
 
 def _sha256(text: str) -> str:

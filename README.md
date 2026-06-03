@@ -2,7 +2,7 @@
   <img src="https://img.shields.io/badge/status-active-success" alt="status" />
   <img src="https://img.shields.io/badge/license-MIT-blue" alt="license" />
   <img src="https://img.shields.io/badge/python-3.10+-blue" alt="python" />
-  <img src="https://img.shields.io/badge/corpus-1%2C465%20XML%20docs-orange" alt="corpus" />
+  <img src="https://img.shields.io/badge/corpus-1%2C657%20XML%20docs-orange" alt="corpus" />
 </p>
 
 <h1 align="center">Nyaya Ledger</h1>
@@ -33,6 +33,7 @@ single machine-readable source.
 | **Knowledge Graph** | Cross-references between sections, rules, forms, and notifications |
 | **Search Index** | Full-text JSONL index ready for BM25 / vector search |
 | **Vector Chunks** | RAG-ready chunked text for embedding pipelines |
+| **Serving Stores** | FalkorDB property graph and LanceDB vector table for MCP/API tools |
 
 Every provision carries a `sourceHash` &mdash; a SHA-256 computed over the
 exact source-text span &mdash; so the XML can be independently audited against
@@ -62,10 +63,16 @@ flowchart LR
     end
 
     subgraph Derived["Derived Artifacts"]
-        GRAPH["Knowledge Graph<br/>(Neo4j / JSON)"]
+        GRAPH["Knowledge Graph<br/>(JSON)"]
         SEARCH["Search Index<br/>(JSONL)"]
         VECTOR["Vector Chunks<br/>(JSONL)"]
+        EMBED["Embeddings<br/>(JSONL)"]
         API["API Payload<br/>(JSON)"]
+    end
+
+    subgraph Serving["Serving Layer"]
+        FALKOR["FalkorDB<br/>property graph"]
+        LANCE["LanceDB<br/>vector table"]
     end
 
     PDF --> EXTRACT
@@ -76,7 +83,10 @@ flowchart LR
     CORPUS --> GRAPH
     CORPUS --> SEARCH
     CORPUS --> VECTOR
+    VECTOR --> EMBED
     CORPUS --> API
+    GRAPH --> FALKOR
+    EMBED --> LANCE
 ```
 
 ### Design Principles
@@ -99,12 +109,13 @@ flowchart LR
 
 | Metric | Value |
 |---|---|
-| XML documents | **1,465** |
-| Source archives | **1,356** |
-| Provisions (sections, rules, forms) | **14,281** |
-| Cross-reference edges | **34,874** |
-| Search records | **14,284** |
-| RAG-ready vector chunks | **94,787** |
+| XML documents | **1,657** |
+| Source archives | **1,548** |
+| Provisions (sections, rules, forms, appendices) | **14,591** |
+| Cross-reference edges | **36,937** |
+| Search records | **14,594** |
+| RAG-ready vector chunks | **97,052** |
+| Nomic embedding records | **97,052** |
 | Acts ingested | **137** |
 | CBIC notifications | **1,216** |
 
@@ -115,7 +126,7 @@ corporate, IP, civil, labour, and regulatory law, including:
 
 | Domain | Key Instruments |
 |---|---|
-| **Direct Tax** | Income-tax Act 1961 (935 sections), Income-tax Act 2025 (553 sections), Income-tax Rules 2026 (333 rules), Wealth-tax Act, Gift-tax Act |
+| **Direct Tax** | Income-tax Act 1961 (935 sections), Income-tax Act 2025 (553 sections), Income-tax Rules 2026 (333 rules, appendices, and 190 forms), Wealth-tax Act, Gift-tax Act |
 | **Indirect Tax** | CGST Act, IGST Act, CGST Rules, Customs Tariff Act, 1,216 CBIC notifications |
 | **Criminal Law** | Bharatiya Nyaya Sanhita 2023, BNSS 2023, BSA 2023, Indian Penal Code, CrPC 1973, PMLA |
 | **Corporate** | Companies Act 2013, LLP Act, Competition Act, SEBI Act, SARFAESI Act |
@@ -349,6 +360,52 @@ python3 main.py html build           # Static HTML browser
 python3 main.py pipeline verify      # Full verification gate
 ```
 
+### Serving Layer
+
+The canonical corpus remains XML and JSONL. FalkorDB and LanceDB are serving
+stores built from derived artifacts for MCP tools, APIs, GraphRAG, and semantic
+search.
+
+```bash
+# Start FalkorDB graph database
+docker compose up -d falkordb
+
+# Load the property graph from derived/graph/corpus_graph.json
+python3 scripts/load_graph_falkordb.py --clear
+
+# Generate embeddings with a local OpenAI-compatible embedding endpoint
+python3 scripts/embed_vector_chunks.py \
+  --endpoint http://127.0.0.1:1234/v1 \
+  --model text-embedding-nomic-embed-text-v1.5
+
+# Build the LanceDB vector table
+python3 scripts/build_lancedb_index.py --overwrite
+```
+
+Validated local serving artifacts:
+
+| Store | Location / Endpoint | Contents |
+|---|---|---|
+| FalkorDB | `127.0.0.1:6379`, graph `nyaya_ledger` | 14,591 corpus nodes plus unresolved-reference placeholders |
+| FalkorDB UI | `http://127.0.0.1:3010` | Optional browser UI |
+| LanceDB | `derived/vector/lancedb`, table `nyaya_ledger_nomic_v1_5` | 97,052 vectors, 768 dimensions |
+| Embeddings JSONL | `derived/vector/embeddings.nomic-v1.5.jsonl` | Portable embedding artifact, 1.6 GB |
+
+Suggested MCP tools over this serving layer:
+
+| Tool | Backing Store |
+|---|---|
+| `lookup_provision` | XML corpus or FalkorDB |
+| `get_incoming_refs` / `get_outgoing_refs` | FalkorDB |
+| `trace_rule_to_act` | FalkorDB |
+| `explain_reference_path` | FalkorDB |
+| `semantic_search` | LanceDB |
+| `hybrid_search` | Search JSONL + LanceDB |
+
+Note: the FalkorDB loader merges identical `source -> relationship type ->
+target` edges for serving traversal. If every repeated reference occurrence must
+be preserved as a separate edge, include `eId` in the relationship identity.
+
 ---
 
 ## Project Structure
@@ -372,6 +429,9 @@ git-for-law/
 │   ├── ingest_it_act.py        # IT Act 1961 ingestion
 │   ├── ingest_it_act_2025.py   # IT Act 2025 ingestion
 │   ├── ingest_it_rules_2026.py # IT Rules 2026 ingestion
+│   ├── embed_vector_chunks.py  # OpenAI-compatible embedding export
+│   ├── build_lancedb_index.py  # LanceDB vector table builder
+│   ├── load_graph_falkordb.py  # FalkorDB graph loader
 │   ├── bulk_ingest_acts.py     # Bulk act ingestion
 │   └── ...                     # Scrapers, extractors, splitters
 ├── tests/
@@ -384,7 +444,7 @@ git-for-law/
 │   └── verify.yml              # CI: test + compile + pipeline verify
 ├── Makefile                    # make verify, make test, make inventory
 ├── requirements.txt
-├── docker-compose.yml          # Neo4j (optional)
+├── docker-compose.yml          # FalkorDB + Neo4j services
 └── LICENSE                     # MIT
 ```
 
@@ -394,8 +454,8 @@ git-for-law/
 |---|---|
 | `data/` | Raw PDFs, scraped JSONs, government portal downloads |
 | `sources/` | Extracted text + metadata + checksums per document |
-| `corpus/` | Canonical Akoma Ntoso XML (1,465 files) |
-| `derived/` | Rebuildable graph, search, vector, API, HTML artifacts |
+| `corpus/` | Canonical Akoma Ntoso XML (1,657 files) |
+| `derived/` | Rebuildable graph, search, vector, embeddings, API, HTML, LanceDB artifacts |
 
 ---
 
@@ -449,7 +509,7 @@ sequenceDiagram
     Renderer->>Validator: Akoma Ntoso XML
     Validator->>Validator: Check metadata, sourceHash, paths
     Validator->>Corpus: Validated XML
-    Corpus->>Corpus: graph rebuild, search rebuild, vector chunks
+    Corpus->>Corpus: graph rebuild, search rebuild, vector chunks, embeddings
 ```
 
 ---
@@ -516,4 +576,4 @@ MIT License. See [LICENSE](LICENSE).
   parliamentary and legislative documents
 - Government of India &mdash; [Income Tax Department](https://www.incometaxindia.gov.in),
   [CBIC](https://www.cbic.gov.in) for publicly accessible legal texts
-- Built with Python, Pydantic, Neo4j, and Rich
+- Built with Python, Pydantic, FalkorDB, LanceDB, Neo4j, and Rich

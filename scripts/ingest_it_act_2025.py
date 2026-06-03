@@ -52,18 +52,12 @@ KNOWN_ACT_MAP = {
 
 
 def _target_act_from_context(before: str, after: str) -> str | None:
-    for act_name, act_id in KNOWN_ACT_MAP.items():
+    del before
+    for act_name, act_id in sorted(KNOWN_ACT_MAP.items(), key=lambda item: -len(item[0])):
         if re.search(rf"^\W*of\s+(?:the\s+)?{re.escape(act_name)}", after):
             return act_id
 
-    matches = [
-        (before.rfind(act_name), act_id)
-        for act_name, act_id in KNOWN_ACT_MAP.items()
-        if act_name in before
-    ]
-    if not matches:
-        return CANONICAL_ID
-    return max(matches, key=lambda item: item[0])[1]
+    return CANONICAL_ID
 
 
 def _sha256(text: str) -> str:
