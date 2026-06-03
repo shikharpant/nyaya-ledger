@@ -9,79 +9,107 @@
 <h1 align="center">Nyaya Ledger</h1>
 
 <p align="center">
-  <strong>Agent-ready Indian legal infrastructure over statutes, rules, forms, notifications, knowledge graphs, and semantic search.</strong>
+  <strong>Open Indian legal infrastructure for AI agents.</strong>
 </p>
 
 <p align="center">
-  MCP tools + REST API + Akoma Ntoso-compatible XML + FalkorDB graph + LanceDB vectors.
+  MCP tools, legal knowledge graphs, citation resolution, semantic search, and source-verifiable statutory text.
 </p>
 
 ---
 
-## What This Is
+## The Pivot
 
-Nyaya Ledger is an open-source infrastructure layer for Indian legal AI agents.
-It turns Indian legal source material into a canonical XML corpus, rebuildable
-graph/vector artifacts, and an MCP server that agents can call directly.
+Legal AI is moving from chat over documents to agentic systems that can use
+tools, traverse knowledge, cite authority, and execute workflows. The missing
+piece for India is not another chatbot. It is a reliable legal infrastructure
+layer that agents can call.
 
-The goal is not just to store legal text. The goal is to let an agent answer
-operational legal questions with traceable structure:
+Nyaya Ledger is that layer.
 
-- What is the exact text of a section, rule, form, or notification?
-- Who cites this provision?
-- What does this provision cite?
-- Which Act section enables this rule or form?
-- How are two provisions connected in the legal graph?
-- What related provisions should be reviewed together?
-- Which corpus span and source hash support this answer?
+It converts Indian legal sources into a canonical, source-verifiable corpus and
+serves that corpus through MCP and REST tools. Agents can resolve citations,
+fetch exact statutory text, follow cross-references, trace rules back to Acts,
+search semantically, and explain why provisions are connected.
 
-Nyaya Ledger currently focuses on Indian Union law, with strong coverage across
-tax, GST, criminal law, company law, IP, civil law, labour law, and regulatory
-statutes.
+This project is designed to be the open substrate beneath Indian legal agents,
+research tools, compliance systems, tax workflows, and future legal knowledge
+products.
+
+```text
+Legal AI agent
+  -> Nyaya Ledger MCP
+      -> exact provision text
+      -> citation resolver
+      -> graph traversal
+      -> semantic search
+      -> source provenance
+      -> Indian statutory corpus
+```
+
+The thesis is simple: legal AI becomes useful when it is connected to
+structured legal authority, not when it guesses over PDFs.
+
+---
+
+## What Agents Can Do
+
+Nyaya Ledger gives an agent legal primitives instead of raw files.
+
+| Need | Tooling |
+|---|---|
+| Find the exact text of a provision | `lookup_provision` |
+| Turn `section 128A CGST Act` into a canonical ID | `resolve_citation` |
+| Search provisions by legal meaning | `semantic_search` |
+| Find who cites a provision | `get_incoming_refs` |
+| Find what a provision cites | `get_outgoing_refs` |
+| Trace a GST rule or form to its enabling Act section | `trace_rule_to_act` |
+| Find related provisions across graph and vectors | `find_related_provisions` |
+| Explain why two provisions are connected | `explain_reference_path` |
+| Find forms prescribed under a rule | `get_forms_for_rule` |
+| Compare amended versions over time | `compare_versions` roadmap |
+
+Example workflows:
+
+```text
+FORM GST REG-06
+  -> incoming references
+  -> CGST Rule 10
+  -> CGST Act section 25
+  -> exact source-backed text
+```
+
+```text
+Income-tax Act section 112A
+  -> exact text
+  -> outgoing references
+  -> related provisions
+  -> semantically similar capital-gains rules
+```
 
 ---
 
 ## MCP First
 
-The primary downstream interface is an MCP server for legal agents.
+The primary interface is an MCP server for local and hosted agents.
 
 ```bash
-# Install dependencies
 pip install -r requirements.txt
 
-# Start the MCP server over stdio for local agent clients
+# Local agent clients
 python3 scripts/serve_mcp.py
 
-# Optional: expose MCP over streamable HTTP
+# Streamable HTTP MCP
 python3 scripts/serve_mcp.py --transport streamable-http --host 127.0.0.1 --port 8090
 ```
 
-The MCP tools are backed by the canonical XML corpus, FalkorDB graph serving
-index, LanceDB semantic index, and JSON/JSONL rebuildable artifacts.
-
-| MCP Tool | What It Does | Backing Layer |
-|---|---|---|
-| `lookup_provision` | Fetch exact text, metadata, path, refs, and provenance for a section, rule, form, notification, or document | XML corpus |
-| `semantic_search` | Search Indian legal provisions by meaning | LanceDB + local embedding endpoint |
-| `resolve_citation` | Convert citations like `section 128A CGST Act` into canonical IDs | XML corpus + lexical search |
-| `get_incoming_refs` | Find provisions that cite a given provision | FalkorDB or graph JSON fallback |
-| `get_outgoing_refs` | Find provisions cited by a given provision | FalkorDB or graph JSON fallback |
-| `trace_rule_to_act` | Trace a rule/form/notification back to enabling Act sections | FalkorDB or graph JSON fallback |
-| `find_related_provisions` | Combine graph neighbors and semantic neighbors | FalkorDB + LanceDB |
-| `explain_reference_path` | Show why two provisions are connected | FalkorDB or graph JSON fallback |
-| `get_forms_for_rule` | Find forms prescribed or referenced by a rule | FalkorDB or graph JSON fallback |
-| `compare_versions` | Future: compare amended provision states over time | Planned time-travel corpus |
-
-### REST API
-
-The same tool service is exposed through FastAPI for websites, dashboards,
-internal services, and non-MCP clients.
+The same tool layer is also available over FastAPI:
 
 ```bash
 python3 scripts/serve_api.py --host 127.0.0.1 --port 8080
 ```
 
-Example:
+Example REST call:
 
 ```bash
 curl http://127.0.0.1:8080/tools/resolve_citation \
@@ -89,8 +117,30 @@ curl http://127.0.0.1:8080/tools/resolve_citation \
   -d '{"citation":"section 128A CGST Act"}'
 ```
 
-REST tools are available as `POST /tools/<tool_name>`. API docs are available
-from FastAPI at `/docs` when the server is running.
+The MCP and REST servers share the same service implementation, so agent
+clients, web apps, internal services, and evaluation harnesses all hit the same
+legal tool surface.
+
+---
+
+## Why This Matters
+
+Indian law is highly connected. A single legal answer may require a statute,
+rules, forms, notifications, amendments, schedules, and cross-references across
+multiple Acts.
+
+Most legal AI systems hide this complexity inside a closed product. Nyaya
+Ledger makes the legal substrate open, inspectable, and self-hostable.
+
+The project is built around four principles:
+
+1. **Authority before fluency.** The corpus and graph are the grounding layer;
+   LLMs reason over retrieved legal structure.
+2. **Canonical IDs everywhere.** Provisions are addressable and composable
+   across tools.
+3. **Source-verifiable text.** XML nodes carry source spans and hashes.
+4. **Rebuildable infrastructure.** Graphs, vectors, search indexes, and APIs
+   are derived from the corpus, not hand-maintained.
 
 ---
 
@@ -98,57 +148,57 @@ from FastAPI at `/docs` when the server is running.
 
 ```mermaid
 flowchart LR
-    Agent["Legal AI Agent"]
-    App["Website / App / Workflow"]
+    Agent["AI Agent"]
+    App["Legal App / Workflow"]
 
-    subgraph Interfaces["Serving Interfaces"]
-        MCP["MCP Server<br/>scripts/serve_mcp.py"]
-        REST["REST API<br/>scripts/serve_api.py"]
+    subgraph Interfaces["Agent Interfaces"]
+        MCP["MCP Server"]
+        REST["REST API"]
     end
 
-    subgraph Service["Shared Tool Service"]
-        TOOLS["lookup, search, refs,<br/>citation resolution, paths"]
+    subgraph Tools["Nyaya Tool Service"]
+        LOOKUP["Lookup"]
+        CITE["Citation Resolution"]
+        GRAPH["Reference Graph"]
+        SEM["Semantic Search"]
+        PATH["Path Explanation"]
     end
 
-    subgraph Truth["Source of Truth"]
-        XML["corpus/<br/>Akoma Ntoso-compatible XML"]
-        SOURCE["sources/<br/>metadata + extracted text + hashes"]
+    subgraph Canonical["Canonical Corpus"]
+        XML["Akoma Ntoso-compatible XML"]
+        SRC["Source archives<br/>metadata + extracted text + hashes"]
     end
 
-    subgraph Derived["Rebuildable Serving Artifacts"]
-        GRAPHJSON["derived/graph/corpus_graph.json"]
-        SEARCH["derived/search/corpus_search.jsonl"]
-        CHUNKS["derived/vector/corpus_chunks.jsonl"]
-        EMBED["derived/vector/embeddings.nomic-v1.5.jsonl"]
+    subgraph Derived["Derived Artifacts"]
+        GJSON["Graph JSON"]
+        SEARCH["Search JSONL"]
+        CHUNKS["Vector Chunks"]
+        EMBED["Embeddings JSONL"]
     end
 
     subgraph Stores["Serving Stores"]
-        FALKOR["FalkorDB<br/>property graph"]
-        LANCE["LanceDB<br/>vector table"]
+        FALKOR["FalkorDB"]
+        LANCE["LanceDB"]
     end
 
-    Agent --> MCP
-    App --> REST
-    MCP --> TOOLS
-    REST --> TOOLS
-    TOOLS --> XML
-    TOOLS --> SEARCH
-    TOOLS --> FALKOR
-    TOOLS --> LANCE
-    XML --> GRAPHJSON
+    Agent --> MCP --> Tools
+    App --> REST --> Tools
+    Tools --> XML
+    Tools --> SEARCH
+    Tools --> FALKOR
+    Tools --> LANCE
+    SRC --> XML
+    XML --> GJSON --> FALKOR
     XML --> SEARCH
-    XML --> CHUNKS
-    SOURCE --> XML
-    GRAPHJSON --> FALKOR
-    CHUNKS --> EMBED --> LANCE
+    XML --> CHUNKS --> EMBED --> LANCE
 ```
 
-Design rule: XML is authoritative. Databases, vectors, search indexes, and API
-payloads are serving artifacts that can be rebuilt.
+XML is the source of truth. FalkorDB, LanceDB, JSONL search, embeddings, API
+payloads, and HTML browsers are serving artifacts.
 
 ---
 
-## Current Corpus
+## Corpus Snapshot
 
 | Metric | Value |
 |---|---:|
@@ -158,102 +208,29 @@ payloads are serving artifacts that can be rebuilt.
 | Cross-reference edges | 36,937 |
 | Search records | 14,594 |
 | Vector chunks | 97,052 |
-| Nomic embedding records | 97,052 |
+| Embedding records | 97,052 |
 | Acts ingested | 137 |
 | CBIC notifications | 1,216 |
 
-### Legal Coverage
+Coverage currently includes:
 
-| Domain | Key Instruments |
+| Domain | Instruments |
 |---|---|
-| Direct Tax | Income-tax Act 1961, Income-tax Act 2025, Income-tax Rules 2026, Wealth-tax Act, Gift-tax Act |
-| Indirect Tax | CGST Act, IGST Act, CGST Rules, Customs Tariff Act, CBIC notifications |
-| Criminal Law | Bharatiya Nyaya Sanhita 2023, BNSS 2023, BSA 2023, IPC, CrPC, PMLA |
-| Corporate and Securities | Companies Act 2013, LLP Act, Competition Act, SEBI Act, SARFAESI Act |
+| Direct tax | Income-tax Act 1961, Income-tax Act 2025, Income-tax Rules 2026, Wealth-tax Act, Gift-tax Act |
+| GST and indirect tax | CGST Act, IGST Act, CGST Rules, Customs Tariff Act, CBIC notifications |
+| Criminal law | BNS 2023, BNSS 2023, BSA 2023, IPC, CrPC, PMLA |
+| Corporate and securities | Companies Act 2013, LLP Act, Competition Act, SEBI Act, SARFAESI Act |
 | IP | Patents Act 1970, Copyright Act 1957, Trade Marks Act 1999, Designs Act 2000 |
-| Civil and Property | Indian Contract Act, Transfer of Property Act, Registration Act, Specific Relief Act |
+| Civil and property | Indian Contract Act, Transfer of Property Act, Registration Act, Specific Relief Act |
 | Labour | Industrial Disputes Act, EPF Act, ESIC Act, Payment of Wages Act, Maternity Benefit Act |
-| Digital and Identity | IT Act 2000, Digital Personal Data Protection Act 2023, Aadhaar Act 2016 |
-
----
-
-## Quick Start
-
-```bash
-git clone https://github.com/shikharpant/nyaya-ledger.git
-cd nyaya-ledger
-pip install -r requirements.txt
-```
-
-The public GitHub repo tracks code, schemas, docs, scripts, and tests. Large
-local artifacts such as `data/`, `sources/`, `corpus/`, and `derived/` are
-generated or distributed separately.
-
-To run against a local corpus:
-
-```bash
-# Optional: copy defaults and edit paths/endpoints
-cp .env.example .env
-
-# Run MCP for agent clients
-python3 scripts/serve_mcp.py
-
-# Run REST for HTTP clients
-python3 scripts/serve_api.py --host 127.0.0.1 --port 8080
-```
-
----
-
-## Build Serving Stores
-
-FalkorDB provides graph traversal. LanceDB provides semantic search. Both are
-optional at runtime because the service can fall back to XML, search JSONL, and
-graph JSON for many tools.
-
-```bash
-# Start FalkorDB
-docker compose up -d falkordb
-
-# Build graph JSON from XML
-python3 main.py graph rebuild
-
-# Load graph JSON into FalkorDB
-python3 scripts/load_graph_falkordb.py --clear
-
-# Build full-text search records
-python3 main.py search rebuild
-
-# Build vector chunks
-python3 main.py vector chunks
-
-# Generate embeddings through an OpenAI-compatible local endpoint
-python3 scripts/embed_vector_chunks.py \
-  --endpoint http://127.0.0.1:1234/v1 \
-  --model text-embedding-nomic-embed-text-v1.5
-
-# Build LanceDB table
-python3 scripts/build_lancedb_index.py --overwrite
-```
-
-Validated local serving artifacts:
-
-| Artifact | Location |
-|---|---|
-| FalkorDB graph | `127.0.0.1:6379`, graph `nyaya_ledger` |
-| FalkorDB UI | `http://127.0.0.1:3010` |
-| LanceDB table | `derived/vector/lancedb`, table `nyaya_ledger_nomic_v1_5` |
-| Graph JSON | `derived/graph/corpus_graph.json` |
-| Search JSONL | `derived/search/corpus_search.jsonl` |
-| Embeddings JSONL | `derived/vector/embeddings.nomic-v1.5.jsonl` |
-
-Environment variables are documented in [.env.example](.env.example).
+| Digital and identity | IT Act 2000, DPDP Act 2023, Aadhaar Act 2016 |
 
 ---
 
 ## Canonical IDs
 
-Nyaya Ledger uses stable canonical IDs so agents can pass references between
-tools without ambiguity.
+Agents need stable handles. Nyaya Ledger uses canonical IDs for documents and
+provisions:
 
 ```text
 /in/union/acts/income-tax-act-1961/section/112a
@@ -263,14 +240,14 @@ tools without ambiguity.
 /in/union/notifications/cbic/central-tax/2025/18-2025
 ```
 
-Legacy prototype IDs such as `CGST_Rules/Rule_10/SubRule_1` are normalized by
-the lookup layer where possible.
+Legacy prototype IDs such as `CGST_Rules/Rule_10/SubRule_1` are normalized
+where possible.
 
 ---
 
 ## Source Provenance
 
-Every XML provision carries source-span metadata:
+Every provision can be traced back to source text.
 
 ```xml
 <section eId="section_112a"
@@ -287,44 +264,105 @@ Every XML provision carries source-span metadata:
 </section>
 ```
 
-`sourceHash` is computed over the exact extracted source-text span. This lets a
-tool response be audited back to the government PDF, portal HTML, or scraped
-source archive that produced it.
+`sourceHash` is computed over the extracted text span. That lets downstream
+tools audit an answer back to the archived government PDF, portal HTML, or
+scraped source record.
+
+---
+
+## Quick Start
+
+```bash
+git clone https://github.com/shikharpant/nyaya-ledger.git
+cd nyaya-ledger
+pip install -r requirements.txt
+cp .env.example .env
+```
+
+Run the agent interface:
+
+```bash
+python3 scripts/serve_mcp.py
+```
+
+Run the HTTP interface:
+
+```bash
+python3 scripts/serve_api.py --host 127.0.0.1 --port 8080
+```
+
+The public repository tracks the code, schemas, docs, scripts, tests, and
+infrastructure. Large generated artifacts such as `data/`, `sources/`,
+`corpus/`, and `derived/` are local or separately published artifacts.
+
+---
+
+## Build the Serving Layer
+
+```bash
+# Start graph database
+docker compose up -d falkordb
+
+# Rebuild derived artifacts
+python3 main.py graph rebuild
+python3 main.py search rebuild
+python3 main.py vector chunks
+
+# Load graph into FalkorDB
+python3 scripts/load_graph_falkordb.py --clear
+
+# Generate embeddings with an OpenAI-compatible local endpoint
+python3 scripts/embed_vector_chunks.py \
+  --endpoint http://127.0.0.1:1234/v1 \
+  --model text-embedding-nomic-embed-text-v1.5
+
+# Build LanceDB semantic index
+python3 scripts/build_lancedb_index.py --overwrite
+```
+
+Validated local serving artifacts:
+
+| Artifact | Location |
+|---|---|
+| FalkorDB graph | `127.0.0.1:6379`, graph `nyaya_ledger` |
+| FalkorDB UI | `http://127.0.0.1:3010` |
+| LanceDB table | `derived/vector/lancedb`, table `nyaya_ledger_nomic_v1_5` |
+| Graph JSON | `derived/graph/corpus_graph.json` |
+| Search JSONL | `derived/search/corpus_search.jsonl` |
+| Embeddings JSONL | `derived/vector/embeddings.nomic-v1.5.jsonl` |
 
 ---
 
 ## Pipeline
 
-The ingestion pipeline converts official source material into a corpus that
-agents can query safely.
+The ingestion pipeline turns official legal sources into agent-ready legal
+infrastructure.
 
 ```mermaid
 sequenceDiagram
     participant Source as Official PDF/HTML/JSON
     participant Archive as Source Archive
     participant Parser as Structure Parser
-    participant Renderer as XML Renderer
-    participant Validator as Validator
-    participant Derived as Derived Artifacts
-    participant MCP as MCP/API
+    participant XML as Canonical XML
+    participant Verify as Verification
+    participant Tools as MCP/API Tools
 
     Source->>Archive: Extract text, pages, metadata, SHA-256
-    Archive->>Parser: extracted_text.json
-    Parser->>Renderer: structure.json with provisions and refs
-    Renderer->>Validator: XML with canonical IDs and sourceHash
-    Validator->>Derived: graph, search, chunks, API payloads
-    Derived->>MCP: serve legal tools to agents
+    Archive->>Parser: Detect provisions, references, spans
+    Parser->>XML: Render Akoma Ntoso-compatible XML
+    XML->>Verify: Validate metadata, paths, sourceHash
+    Verify->>Tools: Rebuild graph, search, vectors, payloads
 ```
 
 Core commands:
 
 ```bash
-python3 main.py pipeline verify      # Full verification gate
-python3 main.py graph rebuild        # Knowledge graph JSON
-python3 main.py search rebuild       # Search index JSONL
-python3 main.py vector chunks        # RAG chunk JSONL
-python3 main.py api export           # API payload JSON
-python3 main.py html build           # Static HTML browser
+python3 main.py pipeline verify
+python3 main.py graph rebuild
+python3 main.py search rebuild
+python3 main.py vector chunks
+python3 main.py api export
+python3 main.py html build
 ```
 
 Tests:
@@ -338,15 +376,13 @@ make verify
 
 ## Ingesting Law
 
-From a scraped JSON:
-
 ```bash
 python3 scripts/ingest_it_act.py
 python3 scripts/ingest_it_act_2025.py
 python3 scripts/ingest_it_rules_2026.py
 ```
 
-From a source PDF or text file:
+Generic ingestion:
 
 ```bash
 python3 main.py corpus ingest path/to/act.pdf \
@@ -358,33 +394,65 @@ python3 main.py corpus ingest path/to/act.pdf \
   --mode deterministic
 ```
 
-The deterministic parser is preferred for production corpus work. Optional LLM
-parsing exists for hard extraction cases, but source-span validation remains the
+Deterministic parsing is preferred for production corpus work. LLM-assisted
+parsing can help with difficult sources, but source-span validation remains the
 quality gate.
 
 ---
 
-## Example Agent Workflows
+## Future Map
 
-### Trace a GST Form to Its Legal Authority
+### 1. Public Agent Substrate
 
-1. `resolve_citation("FORM GST REG-06")`
-2. `get_incoming_refs("/in/union/forms/gst-reg-06")`
-3. `trace_rule_to_act("/in/union/rules/cgst-rules-2017/rule/10/subrule/1")`
-4. `lookup_provision("/in/union/acts/cgst-act-2017/section/25")`
+Make Nyaya Ledger easy for any local or hosted agent to consume:
 
-### Review a Direct Tax Issue
+- hosted MCP endpoint
+- versioned corpus artifact releases
+- Docker Compose profile for agent stacks
+- SearXNG and Firecrawl companion tools
+- legal-agent prompt packs and workflow examples
 
-1. `semantic_search("long term capital gains on listed equity shares")`
-2. `lookup_provision("/in/union/acts/income-tax-act-1961/section/112a")`
-3. `get_outgoing_refs("/in/union/acts/income-tax-act-1961/section/112a")`
-4. `find_related_provisions("/in/union/acts/income-tax-act-1961/section/112a")`
+### 2. Better Legal Intelligence
 
-### Explain a Connection
+Move beyond retrieval into legal structure:
 
-1. `resolve_citation("section 164 CGST Act")`
-2. `resolve_citation("rule 10 CGST Rules")`
-3. `explain_reference_path(rule_id, section_id)`
+- richer citation resolution across Indian legal abbreviations and naming
+  variants
+- provision-level confidence and coverage reports
+- graph-based issue maps for tax, GST, company law, and criminal law
+- semantic + graph hybrid related-provision ranking
+- legal query evals for citation, lookup, graph path, and retrieval quality
+
+### 3. Time-Travel Law
+
+Materialize amended law over time:
+
+- provision version graph
+- `compare_versions`
+- amendment impact reports
+- notification-to-corpus mutation plans
+- as-of-date lookup for statutory text
+
+### 4. Legal Products on Top
+
+Build thin products over the infrastructure:
+
+- Indian legal graph explorer
+- GST form/rule/Act tracing assistant
+- direct tax research assistant
+- notification impact monitor
+- compliance workflow agent
+- private corpus connector for firms and teams
+
+### 5. Open Legal Data Layer
+
+Keep the core open and inspectable:
+
+- source manifests for official legal material
+- reproducible corpus builds
+- signed or hashed corpus releases
+- public unresolved-reference reports
+- contribution workflow for jurisdiction modules
 
 ---
 
@@ -404,8 +472,8 @@ nyaya-ledger/
 │   │   └── validator.py        # Corpus and sourceHash validation
 │   └── schemas/
 ├── scripts/
-│   ├── serve_mcp.py            # MCP server
-│   ├── serve_api.py            # FastAPI server
+│   ├── serve_mcp.py
+│   ├── serve_api.py
 │   ├── load_graph_falkordb.py
 │   ├── build_lancedb_index.py
 │   ├── embed_vector_chunks.py
@@ -418,37 +486,29 @@ nyaya-ledger/
 └── LICENSE
 ```
 
-Local-only generated directories:
+Local generated directories:
 
 | Directory | Purpose |
 |---|---|
 | `data/` | Raw PDFs, scraped JSON, source downloads |
 | `sources/` | Extracted text, metadata, checksums |
 | `corpus/` | Canonical XML corpus |
-| `derived/` | Graph, search, vector, embeddings, API, HTML, LanceDB |
+| `derived/` | Graph, search, vectors, embeddings, API, HTML, LanceDB |
 
 ---
 
-## Status and Roadmap
+## Status
 
-Already implemented:
+Implemented:
 
-- MCP server and REST API over the same shared tool service
-- XML provision lookup with canonical IDs and legacy ID normalization
-- Citation resolution for common Indian law references
-- Graph traversal through FalkorDB with JSON fallback
-- Semantic search through LanceDB and local OpenAI-compatible embeddings
+- MCP server and REST API over a shared legal tool service
+- canonical provision lookup and legacy ID normalization
+- citation resolution for common Indian legal references
+- graph traversal through FalkorDB with graph JSON fallback
+- semantic search through LanceDB
 - GST form/rule/Act tracing
-- Rebuildable graph, search, vector, API, and HTML artifacts
-- Corpus verification and source-hash validation
-
-Next priorities:
-
-- Materialize amendment history for `compare_versions`
-- Publish corpus artifacts separately from the code repository
-- Add hosted MCP/REST deployment for public corpus access
-- Extend citation resolution across more Indian law naming variants
-- Improve unresolved-reference closure for GST, Income-tax, and base-law edge cases
+- rebuildable graph, search, vector, API, and HTML artifacts
+- source-hash validation and pipeline verification
 
 ---
 
