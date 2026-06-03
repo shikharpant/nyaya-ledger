@@ -380,6 +380,12 @@ python3 scripts/embed_vector_chunks.py \
 
 # Build the LanceDB vector table
 python3 scripts/build_lancedb_index.py --overwrite
+
+# Run the REST API
+python3 scripts/serve_api.py --host 127.0.0.1 --port 8080
+
+# Or run the MCP server over stdio for local agent clients
+python3 scripts/serve_mcp.py
 ```
 
 Validated local serving artifacts:
@@ -391,16 +397,33 @@ Validated local serving artifacts:
 | LanceDB | `derived/vector/lancedb`, table `nyaya_ledger_nomic_v1_5` | 97,052 vectors, 768 dimensions |
 | Embeddings JSONL | `derived/vector/embeddings.nomic-v1.5.jsonl` | Portable embedding artifact, 1.6 GB |
 
-Suggested MCP tools over this serving layer:
+Implemented tools over this serving layer:
 
 | Tool | Backing Store |
 |---|---|
 | `lookup_provision` | XML corpus or FalkorDB |
+| `resolve_citation` | XML corpus + search JSONL |
 | `get_incoming_refs` / `get_outgoing_refs` | FalkorDB |
 | `trace_rule_to_act` | FalkorDB |
+| `get_forms_for_rule` | FalkorDB |
 | `explain_reference_path` | FalkorDB |
+| `find_related_provisions` | FalkorDB + LanceDB |
 | `semantic_search` | LanceDB |
-| `hybrid_search` | Search JSONL + LanceDB |
+| `compare_versions` | Placeholder until amended states are materialized |
+
+REST tools are exposed as `POST /tools/<tool_name>`, for example:
+
+```bash
+curl http://127.0.0.1:8080/tools/resolve_citation \
+  -H 'Content-Type: application/json' \
+  -d '{"citation":"section 128A CGST Act"}'
+```
+
+The MCP server can also be run over HTTP for remote clients:
+
+```bash
+python3 scripts/serve_mcp.py --transport streamable-http --host 127.0.0.1 --port 8090
+```
 
 Note: the FalkorDB loader merges identical `source -> relationship type ->
 target` edges for serving traversal. If every repeated reference occurrence must
@@ -422,7 +445,8 @@ git-for-law/
 │   │   ├── graph_index.py      # Knowledge graph builder
 │   │   ├── search_index.py     # Full-text search builder
 │   │   ├── vector_index.py     # RAG chunk builder
-│   │   └── ...                 # 21 modules total
+│   │   ├── serving.py          # Shared REST/MCP tool service
+│   │   └── ...                 # 24 modules total
 │   ├── models.py               # Pydantic data models
 │   └── schemas/                # JSON Schema definitions
 ├── scripts/                    # Ingestion and scraping scripts
@@ -432,6 +456,8 @@ git-for-law/
 │   ├── embed_vector_chunks.py  # OpenAI-compatible embedding export
 │   ├── build_lancedb_index.py  # LanceDB vector table builder
 │   ├── load_graph_falkordb.py  # FalkorDB graph loader
+│   ├── serve_api.py            # FastAPI REST service
+│   ├── serve_mcp.py            # MCP tool server
 │   ├── bulk_ingest_acts.py     # Bulk act ingestion
 │   └── ...                     # Scrapers, extractors, splitters
 ├── tests/

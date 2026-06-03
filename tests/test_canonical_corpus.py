@@ -20,6 +20,7 @@ from src.legal_corpus.review import apply_batch_promotion, plan_batch_promotion,
 from src.legal_corpus.renderer import canonicalize_legacy_reference, render_source_document, write_xml
 from src.legal_corpus.search_index import build_search_records, read_search_index, search_index, search_records, write_search_index
 from src.legal_corpus.seed import seed_from_existing_data
+from src.legal_corpus.serving import NyayaToolService
 import src.legal_corpus.source_inventory as source_inventory
 from src.legal_corpus.source_inventory import (
     build_source_inventory,
@@ -1765,3 +1766,81 @@ def test_pipeline_verification_validates_source_inventory_when_present(tmp_path)
     assert not failed.ok
     assert not failed_step.ok
     assert any("stats.items mismatch" in error for error in failed_step.errors)
+
+
+def _seed_tool_service(tmp_path):
+    corpus_dir = tmp_path / "corpus"
+    sources_dir = tmp_path / "sources"
+    seed_from_existing_data(ROOT, corpus_dir=corpus_dir, sources_dir=sources_dir)
+    return NyayaToolService(
+        corpus_dir=corpus_dir,
+        search_index_path=tmp_path / "derived/search/missing.jsonl",
+        graph_json_path=tmp_path / "derived/graph/missing.json",
+        lancedb_path=tmp_path / "missing-lancedb",
+        falkor_port=0,
+    )
+
+
+def test_serving_tools_resolve_lookup_search_and_graph_paths(tmp_path):
+    service = _seed_tool_service(tmp_path)
+    subrule_id = "/in/union/rules/cgst-rules-2017/rule/10/subrule/1"
+    form_id = "/in/union/forms/gst-reg-06"
+    section_id = "/in/union/acts/cgst-act-2017/section/25"
+
+    lookup = service.lookup_provision("CGST_Rules/Rule_10/SubRule_1", include_text=True)
+    assert lookup["found"]
+    assert lookup["canonical_id"] == subrule_id
+    assert "checksum character" in lookup["provision"]["text"]
+
+    resolved_rule = service.resolve_citation("rule 10 CGST Rules")
+    assert resolved_rule["candidates"][0]["canonical_id"] == "/in/union/rules/cgst-rules-2017/rule/10"
+    assert resolved_rule["candidates"][0]["exists"]
+
+    resolved_form = service.resolve_citation("FORM GST REG-06")
+    assert resolved_form["candidates"][0]["canonical_id"] == form_id
+
+    lexical = service.lexical_search("checksum character", role="provision", limit=3)
+    assert lexical
+    assert lexical[0]["canonical_id"] in {subrule_id, "/in/union/rules/cgst-rules-2017/rule/10"}
+
+    outgoing = service.get_outgoing_refs(subrule_id)
+    outgoing_targets = {edge["target"] for edge in outgoing["references"]}
+    assert form_id in outgoing_targets
+    assert section_id in outgoing_targets
+
+    incoming = service.get_incoming_refs(form_id)
+    incoming_sources = {edge["source"] for edge in incoming["references"]}
+    assert subrule_id in incoming_sources
+
+    forms = service.get_forms_for_rule("CGST_Rules/Rule_10")
+    assert {edge["target"] for edge in forms["forms"]} == {form_id}
+
+    trace = service.trace_rule_to_act(subrule_id)
+    assert any(path["nodes"][-1]["canonical_id"] == section_id for path in trace["paths"])
+
+    related = service.find_related_provisions(subrule_id)
+    assert form_id in {item["canonical_id"] for item in related["related"]}
+
+    explained = service.explain_reference_path(subrule_id, section_id)
+    assert explained["paths"]
+
+    comparison = service.compare_versions(subrule_id, from_date="2025-01-01", to_date="2026-01-01")
+    assert comparison["status"] == "not_implemented"
+
+
+def test_rest_api_routes_use_shared_service(tmp_path):
+    from scripts import serve_api
+
+    previous = serve_api._SERVICE
+    serve_api._SERVICE = _seed_tool_service(tmp_path)
+    try:
+        resolved = serve_api.resolve_citation(serve_api.ResolveCitationRequest(citation="rule 10 CGST Rules"))
+        assert resolved["candidates"][0]["canonical_id"] == "/in/union/rules/cgst-rules-2017/rule/10"
+
+        payload = serve_api.lookup_provision(
+            serve_api.LookupRequest(canonical_id="CGST_Rules/Rule_10/SubRule_1", include_text=False)
+        )
+        assert payload["found"]
+        assert "text" not in payload["provision"]
+    finally:
+        serve_api._SERVICE = previous
