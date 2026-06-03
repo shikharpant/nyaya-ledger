@@ -43,6 +43,12 @@ IT_ACT_2025 = "/in/union/acts/income-tax-act-2025"
 IT_RULES_2026 = CANONICAL_ID
 
 ACT_MAP = {
+    "representation of the people act": "/in/union/acts/representation-of-the-people-act-1951",
+    "narcotic drugs and psychotropic substances act": "/in/union/acts/narcotic-drugs-and-psychotropic-substances-act-1985",
+    "national housing bank act": "/in/union/acts/national-housing-bank-act-1987",
+    "companies act, 1956": "/in/union/acts/companies-act-1956-repealed",
+    "companies act 1956": "/in/union/acts/companies-act-1956-repealed",
+    "the companies act, 1956": "/in/union/acts/companies-act-1956-repealed",
     "income-tax act, 1961": IT_ACT_1961,
     "income-tax act 1961": IT_ACT_1961,
     "income-tax act,1961": IT_ACT_1961,
@@ -59,6 +65,21 @@ ACT_MAP = {
     "companies act": "/in/union/acts/companies-act-2013",
     "customs act": "/in/union/acts/customs-act-1962",
 }
+
+
+def _target_act_from_context(before: str, after: str) -> str | None:
+    for act_name, act_id in ACT_MAP.items():
+        if re.search(rf"^\W*of\s+(?:the\s+)?{re.escape(act_name)}", after):
+            return act_id
+
+    matches = [
+        (before.rfind(act_name), act_id)
+        for act_name, act_id in ACT_MAP.items()
+        if act_name in before
+    ]
+    if not matches:
+        return IT_ACT_1961
+    return max(matches, key=lambda item: item[0])[1]
 
 
 def _sha256(text: str) -> str:
@@ -114,14 +135,12 @@ def find_references(text: str, rule_label: str) -> list[dict]:
     for m in re.finditer(r"section\s+(\d+[A-Za-z]*)\b", text, re.IGNORECASE):
         matched = m.group(0)
         start_pos = max(0, m.start() - 400)
-        context = text[start_pos : m.start()].lower()
+        before = text[start_pos : m.start()].lower()
+        after = text[m.end() : min(len(text), m.end() + 180)].lower()
 
-        target_act = IT_ACT_1961
-        for act_name, act_id in ACT_MAP.items():
-            if act_name in context:
-                if act_id is not None:
-                    target_act = act_id
-                break
+        target_act = _target_act_from_context(before, after)
+        if target_act is None:
+            continue
 
         snum_clean = re.sub(r"[^0-9A-Za-z]", "", m.group(1)).lower()
         ref_id = f"{target_act}/section/{snum_clean}"

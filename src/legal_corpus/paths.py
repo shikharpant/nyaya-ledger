@@ -13,7 +13,7 @@ def _rule_file_label(label: str) -> str:
     if re.fullmatch(r"\d+[a-z]+", clean):
         number = re.match(r"\d+", clean)
         assert number is not None
-        return f"{int(number.group(0)):02}{clean[number.end():]}"
+        return f"{int(number.group(0)):02}{clean[number.end() :]}"
     return clean
 
 
@@ -33,10 +33,21 @@ def expected_corpus_relative_path(canonical_id: str, document_type: str = "") ->
             label = parts[rule_index + 1]
             return Path(*base, f"rule-{_rule_file_label(label)}.xml")
 
-    if document_type == "rules" or (len(parts) >= 4 and parts[2] == "rules" and "rule" not in parts):
+    if document_type == "appendix" or (
+        len(parts) >= 5 and parts[2] == "rules" and parts[-1].startswith("appendix-")
+    ):
+        base = parts[:-1]
+        last = parts[-1]
+        return Path(*base, f"{last}.xml")
+
+    if document_type == "rules" or (
+        len(parts) >= 4 and parts[2] == "rules" and "rule" not in parts
+    ):
         return Path(*parts, "rules.xml")
 
-    if document_type == "act" or (len(parts) >= 4 and parts[2] == "acts" and "section" not in parts):
+    if document_type == "act" or (
+        len(parts) >= 4 and parts[2] == "acts" and "section" not in parts
+    ):
         return Path(*parts, "act.xml")
 
     if document_type == "schedule" or (len(parts) >= 4 and parts[2] == "schedules"):

@@ -95,7 +95,9 @@ def _validate_source_attrs(path: Path, node: ET.Element) -> list[str]:
     return errors
 
 
-def validate_xml_file(path: Path) -> tuple[list[str], list[str], str | None, set[str], list[tuple[str, str]]]:
+def validate_xml_file(
+    path: Path,
+) -> tuple[list[str], list[str], str | None, set[str], list[tuple[str, str]]]:
     errors: list[str] = []
     warnings: list[str] = []
     canonical_id: str | None = None
@@ -105,7 +107,13 @@ def validate_xml_file(path: Path) -> tuple[list[str], list[str], str | None, set
     try:
         tree = ET.parse(path)
     except ET.ParseError as exc:
-        return [f"{path}: XML parse error: {exc}"], warnings, canonical_id, local_ids, references
+        return (
+            [f"{path}: XML parse error: {exc}"],
+            warnings,
+            canonical_id,
+            local_ids,
+            references,
+        )
 
     root = tree.getroot()
     if root.tag != "akomaNtoso":
@@ -122,13 +130,29 @@ def validate_xml_file(path: Path) -> tuple[list[str], list[str], str | None, set
     if canonical_id and not canonical_id.startswith("/in/"):
         errors.append(f"{path}: canonical_id must start with /in/")
     if canonical_id and not re.fullmatch(r"/[a-z0-9][a-z0-9/_-]*", canonical_id):
-        errors.append(f"{path}: canonical_id contains unsupported characters: {canonical_id}")
+        errors.append(
+            f"{path}: canonical_id contains unsupported characters: {canonical_id}"
+        )
 
     document_type = props.get("document_type")
-    if document_type not in {"act", "rules", "rule", "notification", "circular", "order", "form", "schedule"}:
+    if document_type not in {
+        "act",
+        "rules",
+        "rule",
+        "notification",
+        "circular",
+        "order",
+        "form",
+        "schedule",
+        "appendix",
+    }:
         errors.append(f"{path}: unsupported document_type: {document_type}")
 
-    text_nodes = [node.text.strip() for node in root.findall(".//p") if node.text and node.text.strip()]
+    text_nodes = [
+        node.text.strip()
+        for node in root.findall(".//p")
+        if node.text and node.text.strip()
+    ]
     if not text_nodes:
         warnings.append(f"{path}: no textual p nodes found")
 
@@ -146,8 +170,12 @@ def validate_xml_file(path: Path) -> tuple[list[str], list[str], str | None, set
     for node in root.findall(".//*[@refersTo]"):
         refers_to = node.attrib["refersTo"]
         local_ids.add(refers_to)
-        if canonical_id and not (refers_to == canonical_id or refers_to.startswith(f"{canonical_id}/")):
-            errors.append(f"{path}: local provision ID is outside document hierarchy: {refers_to}")
+        if canonical_id and not (
+            refers_to == canonical_id or refers_to.startswith(f"{canonical_id}/")
+        ):
+            errors.append(
+                f"{path}: local provision ID is outside document hierarchy: {refers_to}"
+            )
 
     for node in root.findall(".//ref") + root.findall(".//textualMod"):
         href = node.attrib.get("href")
@@ -157,7 +185,9 @@ def validate_xml_file(path: Path) -> tuple[list[str], list[str], str | None, set
     return errors, warnings, canonical_id, local_ids, references
 
 
-def validate_xml_source_spans(path: Path, extracted: dict[str, Any]) -> tuple[list[str], list[str]]:
+def validate_xml_source_spans(
+    path: Path, extracted: dict[str, Any]
+) -> tuple[list[str], list[str]]:
     """Validate XML source span attributes against extracted source text."""
     errors: list[str] = []
     warnings: list[str] = []
@@ -177,7 +207,9 @@ def validate_xml_source_spans(path: Path, extracted: dict[str, Any]) -> tuple[li
             errors.append(f"{path}: {eid}: invalid source span attributes")
             continue
         if start < 0 or end < start or end > len(text):
-            errors.append(f"{path}: {eid}: source span {start}:{end} is outside extracted text")
+            errors.append(
+                f"{path}: {eid}: source span {start}:{end} is outside extracted text"
+            )
             continue
         expected_hash = node.attrib.get("sourceHash")
         if expected_hash and expected_hash != text_hash(text[start:end]):
@@ -197,7 +229,9 @@ def validate_corpus(corpus_dir: Path) -> CorpusValidationResult:
 
     for path in sorted(corpus_dir.rglob("*.xml")):
         result.checked_files += 1
-        errors, warnings, canonical_id, local_ids, local_references = validate_xml_file(path)
+        errors, warnings, canonical_id, local_ids, local_references = validate_xml_file(
+            path
+        )
         result.errors.extend(errors)
         result.warnings.extend(warnings)
         known_ids.update(local_ids)
@@ -205,15 +239,22 @@ def validate_corpus(corpus_dir: Path) -> CorpusValidationResult:
         if canonical_id:
             previous = seen_ids.get(canonical_id)
             if previous:
-                result.errors.append(f"{path}: duplicate canonical_id also used by {previous}: {canonical_id}")
+                result.errors.append(
+                    f"{path}: duplicate canonical_id also used by {previous}: {canonical_id}"
+                )
             seen_ids[canonical_id] = path
             try:
                 relative_path = path.relative_to(corpus_dir)
             except ValueError:
                 relative_path = path
-            expected_path = expected_corpus_relative_path(canonical_id, _properties(ET.parse(path).getroot()).get("document_type", ""))
+            expected_path = expected_corpus_relative_path(
+                canonical_id,
+                _properties(ET.parse(path).getroot()).get("document_type", ""),
+            )
             if relative_path != expected_path:
-                result.errors.append(f"{path}: canonical_id path mismatch; expected {corpus_dir / expected_path}")
+                result.errors.append(
+                    f"{path}: canonical_id path mismatch; expected {corpus_dir / expected_path}"
+                )
 
     for path, href in references:
         if href.startswith("/in/") and href not in known_ids:
@@ -252,7 +293,9 @@ def validate_source_archive(source_dir: Path) -> SourceValidationResult:
         return result
 
     if not extracted.get("source_sha256"):
-        result.warnings.append(f"{source_dir}: source_sha256 missing from extracted_text.json")
+        result.warnings.append(
+            f"{source_dir}: source_sha256 missing from extracted_text.json"
+        )
     if not extracted.get("text"):
         result.errors.append(f"{source_dir}: extracted text is empty")
 
@@ -271,35 +314,54 @@ def validate_source_archive(source_dir: Path) -> SourceValidationResult:
             result.errors.append(
                 f"{source_dir}: metadata source_file does not match archive source file: {metadata['source_file']}"
             )
-        if extracted.get("source_file") and extracted["source_file"] != source_path.name:
+        if (
+            extracted.get("source_file")
+            and extracted["source_file"] != source_path.name
+        ):
             result.errors.append(
                 f"{source_dir}: extracted_text source_file does not match archive source file: {extracted['source_file']}"
             )
         if metadata.get("source_sha256") and metadata["source_sha256"] != actual_sha:
-            result.errors.append(f"{source_dir}: metadata source_sha256 does not match source file")
+            result.errors.append(
+                f"{source_dir}: metadata source_sha256 does not match source file"
+            )
         if extracted.get("source_sha256") and extracted["source_sha256"] != actual_sha:
-            result.errors.append(f"{source_dir}: extracted_text source_sha256 does not match source file")
+            result.errors.append(
+                f"{source_dir}: extracted_text source_sha256 does not match source file"
+            )
 
     pages = extracted.get("pages", [])
     if isinstance(pages, list) and pages:
-        reconstructed = "\n\n".join(str(page.get("text", "")) for page in pages if isinstance(page, dict))
+        reconstructed = "\n\n".join(
+            str(page.get("text", "")) for page in pages if isinstance(page, dict)
+        )
         if reconstructed != extracted.get("text", ""):
-            result.errors.append(f"{source_dir}: extracted text does not match page text round-trip")
+            result.errors.append(
+                f"{source_dir}: extracted text does not match page text round-trip"
+            )
         for index, page in enumerate(pages, start=1):
             if not isinstance(page, dict):
-                result.errors.append(f"{source_dir}: page {index}: page record must be an object")
+                result.errors.append(
+                    f"{source_dir}: page {index}: page record must be an object"
+                )
                 continue
             start = page.get("start")
             end = page.get("end")
             page_text = str(page.get("text", ""))
             if not isinstance(start, int) or not isinstance(end, int):
-                result.errors.append(f"{source_dir}: page {index}: start/end must be integers")
+                result.errors.append(
+                    f"{source_dir}: page {index}: start/end must be integers"
+                )
                 continue
             if start < 0 or end < start or end > len(extracted.get("text", "")):
-                result.errors.append(f"{source_dir}: page {index}: invalid span {start}:{end}")
+                result.errors.append(
+                    f"{source_dir}: page {index}: invalid span {start}:{end}"
+                )
                 continue
             if extracted.get("text", "")[start:end] != page_text:
-                result.errors.append(f"{source_dir}: page {index}: span does not match extracted text")
+                result.errors.append(
+                    f"{source_dir}: page {index}: span does not match extracted text"
+                )
     else:
         result.warnings.append(f"{source_dir}: extracted_text.json has no page records")
 

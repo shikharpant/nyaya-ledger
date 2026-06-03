@@ -17,7 +17,51 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 BASE_DIR = REPO_ROOT / "data" / "Law" / "base_laws"
 SKIP_FILES = {"residual"}
-SKIP_EXISTING = True
+SKIP_EXISTING = os.environ.get("SKIP_EXISTING", "1") != "0"
+FORCE_SLUGS = {
+    value.strip()
+    for value in os.environ.get("FORCE_SLUGS", "").split(",")
+    if value.strip()
+}
+
+KNOWN_ACT_MAP = {
+    "representation of the people act": "/in/union/acts/representation-of-the-people-act-1951",
+    "narcotic drugs and psychotropic substances act": "/in/union/acts/narcotic-drugs-and-psychotropic-substances-act-1985",
+    "national housing bank act": "/in/union/acts/national-housing-bank-act-1987",
+    "companies act, 1956": "/in/union/acts/companies-act-1956-repealed",
+    "companies act 1956": "/in/union/acts/companies-act-1956-repealed",
+    "the companies act, 1956": "/in/union/acts/companies-act-1956-repealed",
+    "companies act": "/in/union/acts/companies-act-2013",
+    "income-tax act, 1961": "/in/union/acts/income-tax-act-1961",
+    "income-tax act 1961": "/in/union/acts/income-tax-act-1961",
+    "income-tax act, 2025": "/in/union/acts/income-tax-act-2025",
+    "income-tax act 2025": "/in/union/acts/income-tax-act-2025",
+    "income-tax act": "/in/union/acts/income-tax-act-1961",
+    "income tax act": "/in/union/acts/income-tax-act-1961",
+    "central goods and services tax act": "/in/union/acts/cgst-act-2017",
+    "cgst act": "/in/union/acts/cgst-act-2017",
+    "integrated goods and services tax act": "/in/union/acts/igst-act-2017",
+    "igst act": "/in/union/acts/igst-act-2017",
+    "customs tariff act": "/in/union/acts/customs-tariff-act-1975",
+    "customs act": "/in/union/acts/customs-act-1962",
+    "central excise act": "/in/union/acts/central-excise-act-1944",
+    "finance act": None,
+}
+
+
+def _target_act_from_context(before: str, after: str, fallback: str) -> str | None:
+    for act_name, act_id in KNOWN_ACT_MAP.items():
+        if re.search(rf"^\W*of\s+(?:the\s+)?{re.escape(act_name)}", after):
+            return act_id
+
+    matches = [
+        (before.rfind(act_name), act_id)
+        for act_name, act_id in KNOWN_ACT_MAP.items()
+        if act_name in before
+    ]
+    if not matches:
+        return fallback
+    return max(matches, key=lambda item: item[0])[1]
 
 
 def _sha256(text: str) -> str:
@@ -106,21 +150,46 @@ def build_source_text(sections: list[dict], title: str) -> str:
     return "\n".join(lines)
 
 
-def find_references(text: str, section_label: str, canonical_id: str) -> list[dict]:
+def find_references(
+    text: str,
+    section_label: str,
+    canonical_id: str,
+    available_sections: set[str] | None = None,
+) -> list[dict]:
     refs = []
     seen = set()
     for m in re.finditer(r"section\s+(\d+[A-Za-z]*)\b", text, re.IGNORECASE):
+        matched = m.group(0)
+        start_pos = max(0, m.start() - 400)
+        before = text[start_pos : m.start()].lower()
+        after = text[m.end() : min(len(text), m.end() + 180)].lower()
+        target_act = _target_act_from_context(before, after, canonical_id)
+        if target_act is None:
+            continue
+
         snum_clean = re.sub(r"[^0-9A-Za-z]", "", m.group(1)).lower()
-        ref_id = f"{canonical_id}/section/{snum_clean}"
+        if (
+            target_act == canonical_id
+            and available_sections is not None
+            and snum_clean not in available_sections
+        ):
+            continue
+
+        ref_id = f"{target_act}/section/{snum_clean}"
         if ref_id != _section_id(canonical_id, section_label) and ref_id not in seen:
             seen.add(ref_id)
-            refs.append({"target": ref_id, "text": m.group(0), "kind": "act_section"})
+            refs.append({"target": ref_id, "text": matched, "kind": "act_section"})
     return refs
 
 
 def parse_structure(source_text: str, sections: list[dict], canonical_id: str) -> dict:
     nodes = []
     references = []
+    available_sections = {
+        re.sub(r"[^0-9A-Za-z]", "", str(sec.get("section_number", ""))).lower()
+        for sec in sections
+        if sec.get("section_number")
+    }
 
     for i, sec in enumerate(sections):
         label = sec.get("rule_number", sec.get("section_number", str(i + 1)))
@@ -176,7 +245,7 @@ def parse_structure(source_text: str, sections: list[dict], canonical_id: str) -
                         "confidence": 0.9,
                     }
                 )
-                for ref in find_references(para, label, canonical_id):
+                for ref in find_references(para, label, canonical_id, available_sections):
                     ref_pos = source_text.find(ref["text"], p_start)
                     if ref_pos < 0 or ref_pos >= p_end:
                         ref_pos = p_start
@@ -241,6 +310,11 @@ def render_act_xml(
     ]
 
     eid_counts: dict[str, int] = {}
+    available_sections = {
+        re.sub(r"[^0-9A-Za-z]", "", str(sec.get("section_number", ""))).lower()
+        for sec in sections
+        if sec.get("section_number")
+    }
     for i, sec in enumerate(sections):
         label = sec.get("rule_number", sec.get("section_number", str(i + 1)))
         desc = sec.get("description", "")
@@ -297,7 +371,7 @@ def render_act_xml(
                     xml.append("            <content>")
                     xml.append(f"              <p>{_esc_xml(para)}</p>")
 
-                    refs = find_references(para, label, cid)
+                    refs = find_references(para, label, cid, available_sections)
                     if refs:
                         xml.append("            </content>")
                         xml.append("            <references>")
@@ -373,6 +447,9 @@ def main() -> None:
             continue
 
         slug = meta["slug"]
+        if FORCE_SLUGS and slug not in FORCE_SLUGS:
+            skipped += 1
+            continue
         if slug in existing:
             skipped += 1
             continue
