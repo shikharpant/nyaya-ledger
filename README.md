@@ -44,7 +44,7 @@ into structured, provenance-tracked, cross-referenced knowledge artifacts:
 | Output | Description | Use Case |
 |---|---|---|
 | **Akoma Ntoso XML** | Per-provision legal text with cryptographic source provenance | Authoritative legal reference |
-| **Knowledge Graph** | 80K+ cross-reference edges across 876 statutes | Regulatory impact analysis |
+| **Knowledge Graph** | 80K+ graph edges across 876 statutes and schedules | Regulatory impact analysis |
 | **Search Index** | 45K+ full-text search records | Legal research tools |
 | **Vector Chunks** | 202K+ RAG-ready text chunks | AI legal assistants |
 | **MCP Server** | Model Context Protocol interface | Agent-native legal intelligence |
@@ -66,7 +66,8 @@ government document.
 | **Forms** | 297 prescribed legal forms |
 | **Total XML documents** | **3,057** |
 | **Provisions** | 39,464 |
-| **Cross-references** | **80,018** (97% resolved) |
+| **Graph edges** | **80,679** (99.29% resolved) |
+| **Graph nodes** | 45,784 |
 | **RAG-ready chunks** | 202,642 |
 | **Source archives** | 1,985 |
 
@@ -109,7 +110,7 @@ flowchart LR
     end
 
     subgraph Derived["Derived Artifacts"]
-        GRAPH["Knowledge Graph<br/>44K nodes · 80K edges"]
+        GRAPH["Knowledge Graph<br/>45K nodes · 80K edges"]
         SEARCH["Search Index"]
         VECTOR["Vector Chunks<br/>202K for RAG"]
         MCP["MCP Server"]
@@ -128,8 +129,9 @@ flowchart LR
 3. **Cryptographic provenance.** Every XML element carries `sourceStart`,
    `sourceEnd`, and `sourceHash` linking it to the exact bytes of the
    original government document.
-4. **Cross-reference graph.** 80,018 edges connect provisions across 876
-   statutes, enabling regulatory impact analysis.
+4. **Cross-reference graph.** 80,679 edges connect provisions across 876
+   statutes and 661 schedules, with unresolved targets triaged by class and
+   suggested remediation.
 5. **Agent-native.** MCP server exposes the entire corpus as tools for
    AI agents and LLM-based workflows.
 
@@ -310,6 +312,7 @@ python3 main.py query CGST_Rules/Rule_10 --as-of 2025-10-31
 ```bash
 make verify          # Full verification gate (tests + compile + pipeline)
 python3 main.py graph rebuild      # Knowledge graph
+python3 main.py corpus unresolved-references  # Reference triage manifest
 python3 main.py search rebuild     # Search index
 python3 main.py vector chunks      # RAG-ready chunks
 python3 scripts/embed_vector_chunks.py  # Embeddings for missing chunks
@@ -359,7 +362,7 @@ git-for-law/
 │   ├── bulk_ingest_schedules.py            # India Code schedule ingestion
 │   └── ...
 ├── tests/
-│   └── test_canonical_corpus.py   # 56 tests
+│   └── test_canonical_corpus.py   # 60 tests
 ├── docs/
 │   └── india_legal_profile.md     # Jurisdiction profile
 ├── Makefile
