@@ -2,7 +2,7 @@
   <img src="https://img.shields.io/badge/status-active-success" alt="status" />
   <img src="https://img.shields.io/badge/license-MIT-blue" alt="license" />
   <img src="https://img.shields.io/badge/python-3.10+-blue" alt="python" />
-  <img src="https://img.shields.io/badge/corpus-2%2C094%20XML%20docs-orange" alt="corpus" />
+  <img src="https://img.shields.io/badge/corpus-2%2C231%20XML%20docs-orange" alt="corpus" />
   <img src="https://img.shields.io/badge/MCP-agent--ready-green" alt="mcp" />
 </p>
 
@@ -44,9 +44,9 @@ into structured, provenance-tracked, cross-referenced knowledge artifacts:
 | Output | Description | Use Case |
 |---|---|---|
 | **Akoma Ntoso XML** | Per-provision legal text with cryptographic source provenance | Authoritative legal reference |
-| **Knowledge Graph** | 65K+ cross-reference edges across 574 statutes | Regulatory impact analysis |
-| **Search Index** | 33K+ full-text search records | Legal research tools |
-| **Vector Chunks** | 156K+ RAG-ready text chunks | AI legal assistants |
+| **Knowledge Graph** | 73K+ cross-reference edges across 711 statutes | Regulatory impact analysis |
+| **Search Index** | 39K+ full-text search records | Legal research tools |
+| **Vector Chunks** | 172K+ RAG-ready text chunks | AI legal assistants |
 | **MCP Server** | Model Context Protocol interface | Agent-native legal intelligence |
 
 Every XML element carries a `sourceHash` (SHA-256 of the exact source-text
@@ -59,21 +59,21 @@ government document.
 
 | Metric | Value |
 |---|---|
-| **Statutes** | 574 Acts of Parliament |
+| **Statutes** | 711 Acts of Parliament |
 | **Notifications** | 1,216 CBIC notifications |
 | **Rules** | Income-tax Rules, CGST Rules, and more |
 | **Forms** | 297 prescribed legal forms |
-| **Total XML documents** | **2,094** |
-| **Provisions** | 33,766 |
-| **Cross-references** | **65,313** (97% resolved) |
-| **RAG-ready chunks** | 156,882 |
+| **Total XML documents** | **2,231** |
+| **Provisions** | 34,153 |
+| **Cross-references** | **72,908** (97% resolved) |
+| **RAG-ready chunks** | 172,387 |
 | **Source archives** | 1,985 |
 
 ### Legal Domain Coverage
 
 | Domain | Statutes |
 |---|---|
-| **Tax & Revenue** | Income-tax Act (935 sections), CGST Act, Customs Act, Central Excise Act, 46 total |
+| **Tax & Revenue** | Income-tax Act (935 sections), CGST Act, Customs Act, Central Excise Act, 65+ total |
 | **Criminal Law** | Bharatiya Nyaya Sanhita, BNSS, BSA, IPC, CrPC, PMLA, 11 total |
 | **Corporate** | Companies Act 2013, IBC, Competition Act, SEBI Act, 21 total |
 | **Intellectual Property** | Patents Act 1970, Copyright Act 1957, Trade Marks Act 1999 |
@@ -104,13 +104,13 @@ flowchart LR
     end
 
     subgraph Corpus["Canonical Corpus"]
-        XML["2,094 XML Documents<br/>Git-Versioned"]
+        XML["2,231 XML Documents<br/>Git-Versioned"]
     end
 
     subgraph Derived["Derived Artifacts"]
-        GRAPH["Knowledge Graph<br/>33K nodes · 65K edges"]
+        GRAPH["Knowledge Graph<br/>39K nodes · 73K edges"]
         SEARCH["Search Index"]
-        VECTOR["Vector Chunks<br/>156K for RAG"]
+        VECTOR["Vector Chunks<br/>172K for RAG"]
         MCP["MCP Server"]
     end
 
@@ -127,7 +127,7 @@ flowchart LR
 3. **Cryptographic provenance.** Every XML element carries `sourceStart`,
    `sourceEnd`, and `sourceHash` linking it to the exact bytes of the
    original government document.
-4. **Cross-reference graph.** 65,313 edges connect provisions across 574
+4. **Cross-reference graph.** 72,908 edges connect provisions across 711
    statutes, enabling regulatory impact analysis.
 5. **Agent-native.** MCP server exposes the entire corpus as tools for
    AI agents and LLM-based workflows.
@@ -366,7 +366,7 @@ git-for-law/
 |---|---|---|
 | `data/` | Raw PDFs, scraped JSONs | Variable |
 | `sources/` | Extracted text + metadata + checksums | ~506 MB |
-| `corpus/` | Canonical Akoma Ntoso XML (2,094 files) | ~122 MB |
+| `corpus/` | Canonical Akoma Ntoso XML (2,231 files) | ~122 MB |
 | `derived/` | Rebuildable graph, search, vector artifacts | ~14 GB |
 
 ---
@@ -428,7 +428,7 @@ full version history.
 
 ## Roadmap
 
-- [ ] **Full India Code coverage** &mdash; complete ingestion of all 846 Central Acts
+- [ ] **Full India Code coverage** &mdash; 711/846 Central Acts ingested; scraper running for remaining 135
 - [ ] **State legislation** &mdash; India Code hosts state acts; extend pipeline
 - [ ] **Case law integration** &mdash; Supreme Court and High Court judgments
 - [ ] **Subordinate legislation** &mdash; Rules, regulations, and circulars at scale
@@ -444,7 +444,7 @@ full version history.
 | Who | How |
 |---|---|
 | **Legal AI companies** | RAG-ready vector chunks + knowledge graph for regulatory reasoning |
-| **Law firms** | Cross-reference analysis across 574 statutes for due diligence |
+| **Law firms** | Cross-reference analysis across 711 statutes for due diligence |
 | **Compliance teams** | Time-travel queries to determine applicable law on any date |
 | **Legal researchers** | Open, auditable dataset for empirical legal studies |
 | **Government agencies** | Version-controlled legislation with amendment tracking |
