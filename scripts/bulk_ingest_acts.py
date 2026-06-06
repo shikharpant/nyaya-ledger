@@ -294,7 +294,7 @@ def render_act_xml(
         f'        <property name="source_sha256" value="{source_sha256}"/>',
         '        <property name="source_type" value="source-archive"/>',
         f'        <property name="title" value="{_esc_xml(meta["title"])}"/>',
-        f'        <property name="source_url" value="{meta["source_url"]}"/>',
+        f'        <property name="source_url" value="{_esc_xml(meta["source_url"])}"/>',
         f'        <property name="publication_date" value="{meta["publication_date"]}"/>',
         f'        <property name="effective_from" value="{meta["effective_date"]}"/>',
         f'        <property name="issuing_authority" value="{meta["issuing_authority"]}"/>',

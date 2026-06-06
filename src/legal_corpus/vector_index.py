@@ -54,7 +54,6 @@ def _chunk_record(record: dict[str, Any], chunk_text: str, chunk_index: int) -> 
         "number": record.get("number", ""),
         "path": record.get("path", ""),
         "source_span": record.get("source_span", {}),
-        "source_spans": record.get("source_spans", []),
         "chunk_index": chunk_index,
         "text": chunk_text,
         "token_estimate": len(re.findall(r"[A-Za-z0-9]+", chunk_text)),

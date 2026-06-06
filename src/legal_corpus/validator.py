@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from .paths import expected_corpus_relative_path
+from .references import build_reference_resolver, normalize_reference_target
 from .source_archive import find_source_file, read_metadata_yaml, sha256_file
 from .structure_parser import text_hash, validate_structure_spans
 
@@ -256,8 +257,10 @@ def validate_corpus(corpus_dir: Path) -> CorpusValidationResult:
                     f"{path}: canonical_id path mismatch; expected {corpus_dir / expected_path}"
                 )
 
+    resolver = build_reference_resolver(corpus_dir)
     for path, href in references:
-        if href.startswith("/in/") and href not in known_ids:
+        normalized_href = normalize_reference_target(href, resolver)
+        if normalized_href.startswith("/in/") and normalized_href not in known_ids:
             result.warnings.append(f"{path}: unresolved canonical reference: {href}")
 
     if result.checked_files == 0:

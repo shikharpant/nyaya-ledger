@@ -22,6 +22,7 @@ import sys
 import time
 from html import unescape
 from pathlib import Path
+from urllib.parse import urljoin, urlparse
 from urllib.request import Request, urlopen
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -111,6 +112,31 @@ def _save_catalog(acts: list[dict]) -> None:
     )
 
 
+def discover_pdf_urls(html: str, handle_id: str) -> list[str]:
+    """Return full PDF URLs from the handle page, preserving bitstream sequence."""
+    escaped_handle = re.escape(handle_id)
+    pattern = re.compile(
+        rf"""(?i)(?:href\s*=\s*["'])?(/bitstream/123456789/{escaped_handle}/[^"'<>\s]+?\.pdf)"""
+    )
+    urls: list[str] = []
+    seen: set[str] = set()
+    for match in pattern.finditer(html):
+        url = urljoin(BASE_URL, _html_unescape(match.group(1)))
+        if url in seen:
+            continue
+        seen.add(url)
+        urls.append(url)
+
+    def pdf_rank(url: str) -> tuple[int, int, str]:
+        name = Path(urlparse(url).path).name.lower()
+        hindi_penalty = 1 if name.startswith("h") else 0
+        seq_match = re.search(rf"/{escaped_handle}/(\d+)/", url)
+        sequence = int(seq_match.group(1)) if seq_match else 0
+        return (hindi_penalty, -sequence, url)
+
+    return sorted(urls, key=pdf_rank)
+
+
 def validate_catalog(acts: list[dict]) -> dict[str, object]:
     required = {
         "handle_id",
@@ -183,17 +209,11 @@ def enrich_acts(acts: list[dict], only_handles: set[str] | None = None) -> list[
             time.sleep(5)
             continue
 
-        pdfs = re.findall(
-            rf'/bitstream/123456789/{act["handle_id"]}/\d+/([^"\'>]+\.pdf)', html
-        )
-        eng_pdfs = [p for p in pdfs if p.lower().startswith("eng")]
-        chosen = eng_pdfs[0] if eng_pdfs else (pdfs[0] if pdfs else None)
-
-        if chosen:
-            act["pdf_filename"] = chosen
-            act["pdf_url"] = (
-                f"{BASE_URL}/bitstream/123456789/{act['handle_id']}/1/{chosen}"
-            )
+        pdf_urls = discover_pdf_urls(html, act["handle_id"])
+        if pdf_urls:
+            chosen = pdf_urls[0]
+            act["pdf_filename"] = Path(urlparse(chosen).path).name
+            act["pdf_url"] = chosen
 
         title_match = re.search(r"<title>[^<]*India Code:\s*([^<]+)", html)
         if title_match:

@@ -44,9 +44,9 @@ into structured, provenance-tracked, cross-referenced knowledge artifacts:
 | Output | Description | Use Case |
 |---|---|---|
 | **Akoma Ntoso XML** | Per-provision legal text with cryptographic source provenance | Authoritative legal reference |
-| **Knowledge Graph** | 80K+ graph edges across 876 statutes and schedules | Regulatory impact analysis |
+| **Knowledge Graph** | 81K+ graph edges across 881 statutes, rules, regulations, forms, and schedules | Regulatory impact analysis |
 | **Search Index** | 45K+ full-text search records | Legal research tools |
-| **Vector Chunks** | 202K+ RAG-ready text chunks | AI legal assistants |
+| **Vector Chunks** | 204K+ RAG-ready text chunks | AI legal assistants |
 | **MCP Server** | Model Context Protocol interface | Agent-native legal intelligence |
 
 Every XML element carries a `sourceHash` (SHA-256 of the exact source-text
@@ -59,17 +59,18 @@ government document.
 
 | Metric | Value |
 |---|---|
-| **Statutes** | 876 Acts of Parliament |
+| **Statutes** | 881 Acts of Parliament |
 | **Schedules** | 661 India Code schedules across 317 Acts |
 | **Notifications** | 1,216 CBIC notifications |
-| **Rules** | Income-tax Rules, CGST Rules, and more |
-| **Forms** | 297 prescribed legal forms |
-| **Total XML documents** | **3,057** |
-| **Provisions** | 39,464 |
-| **Graph edges** | **80,679** (99.29% resolved) |
-| **Graph nodes** | 45,784 |
-| **RAG-ready chunks** | 202,642 |
-| **Source archives** | 1,985 |
+| **Rules** | 102 rules documents, including Income-tax, GST, customs, excise, and service tax rules |
+| **Regulations** | 70 CBIC customs regulations |
+| **Forms** | 313 prescribed legal forms |
+| **Total XML documents** | **3,243** |
+| **Graph edges** | **81,394** |
+| **Graph nodes** | 46,685 |
+| **RAG-ready chunks** | 204,499 |
+| **LanceDB vectors** | 204,499 |
+| **Source archives** | 3,580 |
 
 ### Legal Domain Coverage
 
@@ -328,7 +329,7 @@ python3 main.py pipeline verify    # 12-step verification
 |---|---|---|
 | [India Code](https://www.indiacode.nic.in) | 876 Central Acts + 661 schedules | DSpace catalog + Section/Schedule APIs |
 | [Income Tax Department](https://www.incometaxindia.gov.in) | IT Act, IT Rules, Forms | Liferay Search API |
-| [CBIC](https://www.cbic.gov.in) | 1,216 GST/customs notifications | PDF archive |
+| [CBIC](https://www.cbic.gov.in) | 1,216 GST/customs notifications plus downloaded Tax Portal acts, rules, regulations, and forms | PDF archive + Tax Portal JSON |
 
 All data is sourced from official government portals. No proprietary or
 third-party legal databases are used.
@@ -442,7 +443,8 @@ full version history.
 - [x] **Full India Code coverage** &mdash; 876/846 Central Acts ingested (complete + pre-independence acts)
 - [ ] **State legislation** &mdash; India Code hosts state acts; extend pipeline
 - [ ] **Case law integration** &mdash; Supreme Court and High Court judgments
-- [ ] **Subordinate legislation** &mdash; Rules, regulations, and circulars at scale
+- [x] **Subordinate legislation foundation** &mdash; Income-tax, GST, customs, excise, service tax rules plus 70 CBIC regulations and 313 forms
+- [ ] **Circulars and orders at scale** &mdash; Extend CBIC ingestion beyond downloaded rules, regulations, and forms
 - [ ] **Real-time monitoring** &mdash; Gazette watch for new amendments
 - [ ] **REST API** &mdash; Public API for programmatic access
 - [ ] **Multi-language** &mdash; Hindi and regional language support

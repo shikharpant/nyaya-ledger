@@ -45,12 +45,12 @@ def expected_corpus_relative_path(canonical_id: str, document_type: str = "") ->
     ):
         return Path(*parts, "rules.xml")
 
+    if document_type == "schedule" or "schedules" in parts:
+        return Path(*parts, "schedule.xml")
+
     if document_type == "act" or (
         len(parts) >= 4 and parts[2] == "acts" and "section" not in parts
     ):
         return Path(*parts, "act.xml")
-
-    if document_type == "schedule" or (len(parts) >= 4 and parts[2] == "schedules"):
-        return Path(*parts, "schedule.xml")
 
     return Path(*parts).with_suffix(".xml")

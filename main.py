@@ -697,11 +697,18 @@ def cmd_corpus_quality(args):
 
 def cmd_corpus_unresolved_references(args):
     """Build an unresolved canonical reference report."""
-    from src.legal_corpus.references import build_unresolved_reference_report, write_unresolved_reference_report
+    from src.legal_corpus.references import (
+        build_unresolved_reference_report,
+        write_unresolved_reference_report,
+        write_unresolved_reference_summary,
+    )
 
     report = build_unresolved_reference_report(Path(args.corpus_dir), sample_limit=args.sample_limit)
     if args.output:
         write_unresolved_reference_report(report, Path(args.output))
+    summary_output = getattr(args, "summary_output", None)
+    if summary_output:
+        write_unresolved_reference_summary(report, Path(summary_output))
     if args.json:
         _print_json(report)
         return
@@ -712,10 +719,13 @@ def cmd_corpus_unresolved_references(args):
     summary.add_column("Value")
     summary.add_row("Documents", str(stats["documents"]))
     summary.add_row("References", str(stats["references"]))
+    summary.add_row("Alias Resolved Occurrences", str(stats.get("alias_resolved_occurrences", 0)))
     summary.add_row("Unresolved Occurrences", str(stats["unresolved_occurrences"]))
     summary.add_row("Unresolved Targets", str(stats["unresolved_targets"]))
     if args.output:
         summary.add_row("Output", args.output)
+    if summary_output:
+        summary.add_row("Summary", summary_output)
     console.print(summary)
 
     targets = Table(title="Top Unresolved Targets")
@@ -1503,6 +1513,11 @@ def main():
     )
     p_corpus_unresolved.add_argument("--limit", type=int, default=20, help="Number of targets to display")
     p_corpus_unresolved.add_argument("--sample-limit", type=int, default=5, help="Samples per unresolved target")
+    p_corpus_unresolved.add_argument(
+        "--summary-output",
+        default="derived/references/unresolved_references_summary.md",
+        help="Output Markdown triage summary",
+    )
     p_corpus_unresolved.add_argument("--json", action="store_true", help="Print JSON")
     p_corpus_unresolved.set_defaults(func=cmd_corpus_unresolved_references)
 

@@ -305,9 +305,9 @@ def _section_reference_target(text: str, start: int, end: int, document_type: st
         ("central goods and services tax act", "/in/union/acts/cgst-act-2017"),
         ("income-tax act", "/in/union/acts/income-tax-act-1961"),
         ("income tax act", "/in/union/acts/income-tax-act-1961"),
-        ("customs tariff act", "/in/union/acts/customs-tariff-act-1975"),
-        ("customs act", "/in/union/acts/customs-act-1962"),
-        ("central excise act", "/in/union/acts/central-excise-act-1944"),
+        ("customs tariff act", "/in/union/acts/the-customs-tariff-act-1975"),
+        ("customs act", "/in/union/acts/the-customs-act-1962"),
+        ("central excise act", "/in/union/acts/the-central-excise-act-1944"),
     ]
     matches = [(nearby.find(phrase), act_id) for phrase, act_id in act_targets if phrase in nearby]
     if matches:

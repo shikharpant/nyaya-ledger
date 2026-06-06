@@ -7,6 +7,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
 
+from .references import CorpusReferenceResolver, build_reference_resolver, normalize_reference_target
 from .renderer import canonicalize_legacy_reference
 
 
@@ -60,7 +61,7 @@ def _element_text(element: ET.Element) -> str:
     return "\n".join(lines)
 
 
-def _references(element: ET.Element) -> list[dict[str, str]]:
+def _references(element: ET.Element, resolver: CorpusReferenceResolver | None = None) -> list[dict[str, str]]:
     references: list[dict[str, str]] = []
     seen: set[tuple[str, str, str]] = set()
     for child in element.iter():
@@ -69,12 +70,15 @@ def _references(element: ET.Element) -> list[dict[str, str]]:
         target = child.attrib.get("href")
         if not target:
             continue
+        normalized_target = normalize_reference_target(target, resolver)
         item = {
-            "target": target,
+            "target": normalized_target,
             "type": child.attrib.get("type", "REFERS_TO"),
             "showAs": child.attrib.get("showAs", target),
             "eId": child.attrib.get("eId", ""),
         }
+        if normalized_target != target:
+            item["originalTarget"] = target
         key = (item["target"], item["type"], item["eId"])
         if key not in seen:
             references.append(item)
@@ -144,6 +148,7 @@ def normalize_query_id(canonical_id: str) -> str:
 def build_corpus_lookup(corpus_dir: Path) -> dict[str, dict[str, Any]]:
     """Build an in-memory lookup keyed by canonical document/provision ID."""
     index: dict[str, dict[str, Any]] = {}
+    resolver = build_reference_resolver(corpus_dir)
 
     for path in sorted(corpus_dir.rglob("*.xml")):
         tree = ET.parse(path)
@@ -168,7 +173,7 @@ def build_corpus_lookup(corpus_dir: Path) -> dict[str, dict[str, Any]]:
             "properties": props,
             "text": _element_text(body),
             "children": _child_canonical_ids(body, document_id),
-            "references": _references(body),
+            "references": _references(body, resolver),
             "source_spans": _source_spans(body),
         }
 
@@ -190,7 +195,7 @@ def build_corpus_lookup(corpus_dir: Path) -> dict[str, dict[str, Any]]:
                 "title": _first_child_text(element, "heading"),
                 "text": _element_text(element),
                 "children": _child_canonical_ids(element, provision_id),
-                "references": _references(element),
+                "references": _references(element, resolver),
                 "source_span": _source_span(element),
             }
             existing = provision_entry.get("provision")

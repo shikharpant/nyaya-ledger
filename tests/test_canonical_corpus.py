@@ -8,14 +8,19 @@ from src.legal_corpus.api_payload import build_api_payload, write_api_payload
 from src.legal_corpus.amendments import apply_amendments, plan_amendments, promote_amended_corpus
 from src.legal_corpus.batch_ingest import ingest_inventory, write_batch_ingest_report
 from src.legal_corpus.diff import compare_corpora, write_diff_report
-from src.legal_corpus.graph_index import build_neo4j_payload, rebuild_graph_index, write_neo4j_payload
+from src.legal_corpus.graph_index import build_graph_index, build_neo4j_payload, rebuild_graph_index, write_neo4j_payload
 from src.legal_corpus.forms import split_forms_archive
 from src.legal_corpus.html_renderer import build_html_site, write_html_site
 from src.legal_corpus.ingest import ingest_source_file
 from src.legal_corpus.paths import expected_corpus_relative_path
 from src.legal_corpus.quality import audit_corpus_quality, write_quality_report
 from src.legal_corpus.query import export_text, list_documents, lookup_canonical_id, normalize_query_id
-from src.legal_corpus.references import build_unresolved_reference_report, write_unresolved_reference_report
+from src.legal_corpus.references import (
+    build_reference_resolver,
+    build_unresolved_reference_report,
+    write_unresolved_reference_report,
+    write_unresolved_reference_summary,
+)
 from src.legal_corpus.review import apply_batch_promotion, plan_batch_promotion, write_promotion_plan
 from src.legal_corpus.renderer import canonicalize_legacy_reference, render_source_document, write_xml
 from src.legal_corpus.search_index import build_search_records, read_search_index, search_index, search_records, write_search_index
@@ -285,6 +290,19 @@ def test_structure_parser_resolves_non_gst_act_section_references():
     assert "/in/union/acts/cgst-act-2017/section/9" not in targets
 
 
+def test_structure_parser_uses_corpus_canonical_the_act_targets():
+    text = (
+        "The amendment refers to section 11 of the Customs Act, 1962, section 5A of the "
+        "Central Excise Act, 1944, and section 9A of the Customs Tariff Act, 1975."
+    )
+    structure = parse_structure_deterministic({"text": text, "source_sha256": "seed"}, document_type="notification")
+    targets = [reference["target"] for reference in structure["references"]]
+
+    assert "/in/union/acts/the-customs-act-1962/section/11" in targets
+    assert "/in/union/acts/the-central-excise-act-1944/section/5a" in targets
+    assert "/in/union/acts/the-customs-tariff-act-1975/section/9a" in targets
+
+
 def test_structure_parser_detects_compact_rule_headings_and_merges_body():
     text = (
         "23. Revocation of cancellation of registration.-(1) Body for rule 23.\n"
@@ -392,6 +410,132 @@ def test_unresolved_reference_report_groups_targets(tmp_path):
     assert targets["/in/union/acts/cgst-act-2017/section/39"]["kind"] == "act_section"
     assert targets["/in/union/rules/cgst-rules-2017/rule/61"]["kind"] == "rule"
     assert targets["/in/union/acts/cgst-act-2017/section/39"]["source_documents"] == 1
+
+
+def test_reference_resolver_maps_high_confidence_act_and_form_aliases(tmp_path):
+    corpus_dir = tmp_path / "corpus"
+    act_path = corpus_dir / "in/union/acts/the-customs-act-1962/act.xml"
+    form_path = corpus_dir / "in/union/forms/gst-pct-01/form.xml"
+    act_path.parent.mkdir(parents=True)
+    form_path.parent.mkdir(parents=True)
+    act_path.write_text(
+        """
+<akomaNtoso><act><meta><proprietary>
+<property name="canonical_id" value="/in/union/acts/the-customs-act-1962"/>
+</proprietary></meta><body>
+<section refersTo="/in/union/acts/the-customs-act-1962/section/11"><num>11</num><content><p>Power.</p></content></section>
+</body></act></akomaNtoso>
+""".strip(),
+        encoding="utf-8",
+    )
+    form_path.write_text(
+        """
+<akomaNtoso><doc><meta><proprietary>
+<property name="canonical_id" value="/in/union/forms/gst-pct-01"/>
+</proprietary></meta><mainBody><paragraph><content><p>Form.</p></content></paragraph></mainBody></doc></akomaNtoso>
+""".strip(),
+        encoding="utf-8",
+    )
+
+    resolver = build_reference_resolver(corpus_dir)
+
+    assert resolver.resolve("/in/union/acts/customs-act-1962/section/11") == (
+        "/in/union/acts/the-customs-act-1962/section/11",
+        "resolved_by_alias",
+        "apply_alias",
+    )
+    assert resolver.resolve("/in/union/forms/gst-pct-1") == (
+        "/in/union/forms/gst-pct-01",
+        "resolved_by_alias",
+        "apply_alias",
+    )
+    assert resolver.resolve("/in/union/acts/customs-act-1962/section/65a") == (
+        "/in/union/acts/the-customs-act-1962/section/65a",
+        "alias_document_exists_child_missing",
+        "refresh_source_or_parser",
+    )
+
+
+def test_graph_builder_normalizes_alias_targets_and_preserves_original(tmp_path):
+    corpus_dir = tmp_path / "corpus"
+    act_path = corpus_dir / "in/union/acts/the-customs-act-1962/act.xml"
+    notification_path = corpus_dir / "in/union/notifications/cbic/customs/2026/1-2026.xml"
+    act_path.parent.mkdir(parents=True)
+    notification_path.parent.mkdir(parents=True)
+    act_path.write_text(
+        """
+<akomaNtoso><act><meta><proprietary>
+<property name="canonical_id" value="/in/union/acts/the-customs-act-1962"/>
+<property name="document_type" value="act"/>
+</proprietary></meta><body>
+<section refersTo="/in/union/acts/the-customs-act-1962/section/11"><num>11</num><content><p>Power.</p></content></section>
+</body></act></akomaNtoso>
+""".strip(),
+        encoding="utf-8",
+    )
+    notification_path.write_text(
+        """
+<akomaNtoso><doc><meta><proprietary>
+<property name="canonical_id" value="/in/union/notifications/cbic/customs/2026/1-2026"/>
+<property name="document_type" value="notification"/>
+</proprietary></meta><mainBody><paragraph>
+<content><p>See section 11.</p></content>
+<references><ref eId="r1" href="/in/union/acts/customs-act-1962/section/11" showAs="section 11" type="REFERS_TO"/></references>
+</paragraph></mainBody></doc></akomaNtoso>
+""".strip(),
+        encoding="utf-8",
+    )
+
+    graph = build_graph_index(corpus_dir)
+    edge = next(edge for edge in graph["edges"] if edge.get("eId") == "r1")
+
+    assert edge["target"] == "/in/union/acts/the-customs-act-1962/section/11"
+    assert edge["originalTarget"] == "/in/union/acts/customs-act-1962/section/11"
+    assert edge["showAs"] == "section 11"
+
+
+def test_unresolved_reference_report_classifies_and_writes_summary(tmp_path):
+    corpus_dir = tmp_path / "corpus"
+    act_path = corpus_dir / "in/union/acts/the-customs-act-1962/act.xml"
+    notification_path = corpus_dir / "in/union/notifications/cbic/customs/2026/1-2026.xml"
+    act_path.parent.mkdir(parents=True)
+    notification_path.parent.mkdir(parents=True)
+    act_path.write_text(
+        """
+<akomaNtoso><act><meta><proprietary>
+<property name="canonical_id" value="/in/union/acts/the-customs-act-1962"/>
+<property name="document_type" value="act"/>
+</proprietary></meta><body>
+<section refersTo="/in/union/acts/the-customs-act-1962/section/11"><num>11</num><content><p>Power.</p></content></section>
+</body></act></akomaNtoso>
+""".strip(),
+        encoding="utf-8",
+    )
+    notification_path.write_text(
+        """
+<akomaNtoso><doc><meta><proprietary>
+<property name="canonical_id" value="/in/union/notifications/cbic/customs/2026/1-2026"/>
+<property name="document_type" value="notification"/>
+</proprietary></meta><mainBody><paragraph>
+<content><p>Notification under section 11 and FORM GST SPL-02.</p></content>
+<references>
+<ref eId="r1" href="/in/union/acts/customs-act-1962/section/11" showAs="section 11" type="REFERS_TO"/>
+<ref eId="r2" href="/in/union/forms/gst-spl-02" showAs="FORM GST SPL-02" type="REFERS_TO"/>
+</references>
+</paragraph></mainBody></doc></akomaNtoso>
+""".strip(),
+        encoding="utf-8",
+    )
+
+    report = build_unresolved_reference_report(corpus_dir)
+    summary = write_unresolved_reference_summary(report, tmp_path / "summary.md")
+    targets = {item["target"]: item for item in report["targets"]}
+
+    assert report["stats"]["alias_resolved_occurrences"] == 1
+    assert "/in/union/acts/the-customs-act-1962/section/11" not in targets
+    assert targets["/in/union/forms/gst-spl-02"]["classification"] == "form_missing"
+    assert targets["/in/union/forms/gst-spl-02"]["suggested_action"] == "ingest_missing_form"
+    assert "Unresolved Reference Triage" in summary.read_text(encoding="utf-8")
 
 
 def test_quality_report_flags_long_paragraphs_and_joined_tokens(tmp_path):

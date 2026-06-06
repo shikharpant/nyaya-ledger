@@ -11,6 +11,8 @@ from typing import Any
 
 from dotenv import load_dotenv
 
+from .references import build_reference_resolver, normalize_reference_target
+
 load_dotenv()
 
 
@@ -65,6 +67,7 @@ def _edge_key(edge: dict[str, Any]) -> tuple[str, str, str, str]:
 def build_graph_index(corpus_dir: Path) -> dict[str, Any]:
     nodes_by_id: dict[str, dict[str, Any]] = {}
     edges_by_key: dict[tuple[str, str, str, str], dict[str, Any]] = {}
+    resolver = build_reference_resolver(corpus_dir)
 
     for path in sorted(corpus_dir.rglob("*.xml")):
         tree = ET.parse(path)
@@ -119,24 +122,30 @@ def build_graph_index(corpus_dir: Path) -> dict[str, Any]:
         for ref in root.findall(".//ref"):
             target = ref.attrib.get("href")
             if target:
+                normalized_target = normalize_reference_target(target, resolver)
                 edge = {
                     "source": _nearest_source_id(ref, parent_map, canonical_id),
-                    "target": target,
+                    "target": normalized_target,
                     "type": ref.attrib.get("type", "REFERS_TO"),
                     "showAs": ref.attrib.get("showAs", target),
                     "eId": ref.attrib.get("eId", ""),
                 }
+                if normalized_target != target:
+                    edge["originalTarget"] = target
                 edges_by_key[_edge_key(edge)] = edge
 
         for mod in root.findall(".//textualMod"):
             target = mod.attrib.get("href")
             if target:
+                normalized_target = normalize_reference_target(target, resolver)
                 edge = {
                     "source": canonical_id,
-                    "target": target,
+                    "target": normalized_target,
                     "type": mod.attrib.get("type", "AMENDS"),
                     "eId": mod.attrib.get("eId", ""),
                 }
+                if normalized_target != target:
+                    edge["originalTarget"] = target
                 edges_by_key[_edge_key(edge)] = edge
 
     return {
@@ -205,7 +214,8 @@ ON CREATE SET target.kind = 'placeholder'
 MERGE (source)-[r:{relationship_type}]->(target)
 SET r.type = edge.type,
     r.showAs = coalesce(edge.showAs, ''),
-    r.eId = coalesce(edge.eId, '')
+    r.eId = coalesce(edge.eId, ''),
+    r.originalTarget = coalesce(edge.originalTarget, '')
 """.strip(),
                 "params": {"edges": edges},
             }
