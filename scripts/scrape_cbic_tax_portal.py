@@ -22,8 +22,8 @@ from urllib.parse import quote
 BASE_URL = "https://taxinformation.cbic.gov.in"
 STATE_FILE = Path("data/Law/cbic_scrape_state.json")
 OUTPUT_DIR = Path("data/Law/cbic_tax_portal")
-DELAY_DEFAULT = 60.0
-MAX_RETRIES = 1
+DELAY_DEFAULT = 30.0
+MAX_RETRIES = 0
 TIMEOUT = 30
 COOLDOWN = 300  # 5 min pause when rate-limited
 
@@ -89,26 +89,35 @@ class CBICClient:
             cmd.extend(["-H", "Content-Type: application/json", "-d", data])
         if self._token:
             cmd.extend(["-H", f"Authorization: Bearer {self._token}"])
-        try:
-            proc = subprocess.run(cmd, capture_output=True, timeout=TIMEOUT + 15)
-        except subprocess.TimeoutExpired as exc:
-            self._last_request_at = time.monotonic()
-            raise StopRun(f"curl timed out for {url}") from exc
-        self._last_request_at = time.monotonic()
-        output = proc.stdout
-        parts = output.rsplit(b"\n", 1)
-        if len(parts) == 2:
-            body, code_bytes = parts
+        for attempt in range(5):
             try:
-                code = int(code_bytes.strip())
-            except ValueError:
-                code = 0
-        else:
-            body = output
-            code = 0
-        if code == 0:
-            raise StopRun(f"HTTP 0 (connection failed) for {url}")
-        return code, body
+                proc = subprocess.run(cmd, capture_output=True, timeout=TIMEOUT + 15)
+            except subprocess.TimeoutExpired:
+                pass
+            else:
+                self._last_request_at = time.monotonic()
+                output = proc.stdout
+                parts = output.rsplit(b"\n", 1)
+                if len(parts) == 2:
+                    body, code_bytes = parts
+                    try:
+                        code = int(code_bytes.strip())
+                    except ValueError:
+                        code = 0
+                else:
+                    body = output
+                    code = 0
+                if code == 0:
+                    print(f"  [cooldown {COOLDOWN}s attempt {attempt+1}/5]", flush=True)
+                    self._token = None
+                    time.sleep(COOLDOWN)
+                    continue
+                return code, body
+            self._last_request_at = time.monotonic()
+            print(f"  [cooldown {COOLDOWN}s attempt {attempt+1}/5]", flush=True)
+            self._token = None
+            time.sleep(COOLDOWN)
+        raise StopRun(f"failed after 5 cooldowns for {url}")
 
     def _ensure_token(self) -> str:
         if self._token and (time.time() - self._token_time) < 600:

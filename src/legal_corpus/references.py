@@ -106,6 +106,10 @@ class CorpusReferenceResolver:
         self._act_aliases = self._build_act_aliases(document_ids)
         self._form_aliases = self._build_form_aliases(document_ids)
 
+    MANUAL_ACT_ALIASES: dict[str, str] = {
+        "/in/union/acts/sick-industrial-companies-special-provisions-act-1985": "/in/union/acts/sick-industrial-companies-special-provisions-act-1985-repealed",
+    }
+
     @staticmethod
     def _build_act_aliases(document_ids: set[str]) -> dict[str, str]:
         by_key: dict[tuple[str, str], list[str]] = defaultdict(list)
@@ -154,7 +158,11 @@ class CorpusReferenceResolver:
 
         target_document = _target_document(target)
         suffix = target[len(target_document) :] if target.startswith(target_document) else ""
-        alias_document = self._act_aliases.get(target_document) or self._form_aliases.get(target_document)
+        alias_document = (
+            self.MANUAL_ACT_ALIASES.get(target_document)
+            or self._act_aliases.get(target_document)
+            or self._form_aliases.get(target_document)
+        )
         if alias_document:
             normalized = f"{alias_document}{suffix}"
             if normalized in self.known_ids:

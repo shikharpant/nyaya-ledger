@@ -1,38 +1,51 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/status-active-success" alt="status" />
-  <img src="https://img.shields.io/badge/license-MIT-blue" alt="license" />
-  <img src="https://img.shields.io/badge/python-3.10+-blue" alt="python" />
-  <img src="https://img.shields.io/badge/corpus-3%2C057%20XML%20docs-orange" alt="corpus" />
-  <img src="https://img.shields.io/badge/MCP-agent--ready-green" alt="mcp" />
+  <img src="https://img.shields.io/badge/status-active-success?style=flat-square" alt="status" />
+  <img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="license" />
+  <img src="https://img.shields.io/badge/python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white" alt="python" />
+  <img src="https://img.shields.io/badge/corpus-17%2C057%20XML%20docs-orange?style=flat-square" alt="corpus" />
+  <img src="https://img.shields.io/badge/vectors-476%2C722-green?style=flat-square" alt="vectors" />
+  <img src="https://img.shields.io/badge/MCP-agent--ready-8A2BE2?style=flat-square" alt="mcp" />
 </p>
 
 <h1 align="center">Nyaya Ledger</h1>
 
 <p align="center">
-  <strong>The open-source legal data pipeline that makes Indian legislation machine-readable, versionable, and queryable.</strong>
+  <strong>Open-source legal infrastructure for India.</strong>
+</p>
+
+<p align="center">
+  A deterministic pipeline that converts Indian legislation into structured, version-controlled,
+  cryptographically-provenanced, cross-referenced, and queryable knowledge artifacts.
 </p>
 
 <p align="center">
   <em>Nyaya</em> (Sanskrit: न्याय) &mdash; justice, logic, method.
 </p>
 
+<p align="center">
+  <a href="#quick-start">Quick Start</a> &middot;
+  <a href="#corpus-at-a-glance">Corpus</a> &middot;
+  <a href="#architecture">Architecture</a> &middot;
+  <a href="#use-cases">Use Cases</a> &middot;
+  <a href="#contributing">Contributing</a>
+</p>
+
 ---
 
 ## The Problem
 
-India's legal system generates thousands of pages of legislation each year
-across hundreds of statutes, rules, notifications, and circulars. This
-material lives in PDFs, scanned gazettes, and fragmented government portals.
-There is no single machine-readable, version-controlled, cross-referenced
-source of truth.
+India's legal system produces thousands of pages of legislation each year across
+hundreds of statutes, rules, notifications, and circulars. This material lives in
+PDFs, scanned gazettes, and fragmented government portals with no unified
+machine-readable source.
 
-A chartered accountant tracing why Section 112A of the Income-tax Act says
-what it says &mdash; which Finance Act inserted it, which notification amended
-it, which rule operationalises it &mdash; must manually cross-reference
-dozens of documents. A legal AI assistant cannot answer that question because
-no structured data exists.
+A chartered accountant tracing why Section 112A of the Income-tax Act says what
+it says &mdash; which Finance Act inserted it, which notification amended it,
+which rule operationalises it &mdash; must manually cross-reference dozens of
+documents. A legal AI cannot answer that question because no structured data
+exists.
 
-**Nyaya Ledger** exists to change that.
+**Nyaya Ledger** solves this.
 
 ---
 
@@ -41,13 +54,14 @@ no structured data exists.
 Nyaya Ledger is a deterministic pipeline that converts Indian legal documents
 into structured, provenance-tracked, cross-referenced knowledge artifacts:
 
-| Output | Description | Use Case |
+| Output | Scale | Description |
 |---|---|---|
-| **Akoma Ntoso XML** | Per-provision legal text with cryptographic source provenance | Authoritative legal reference |
-| **Knowledge Graph** | 81K+ graph edges across 881 statutes, rules, regulations, forms, and schedules | Regulatory impact analysis |
-| **Search Index** | 45K+ full-text search records | Legal research tools |
-| **Vector Chunks** | 204K+ RAG-ready text chunks | AI legal assistants |
-| **MCP Server** | Model Context Protocol interface | Agent-native legal intelligence |
+| **Akoma Ntoso XML** | 17,057 documents | Per-provision legal text with cryptographic source provenance |
+| **Knowledge Graph** | 81K edges / 47K nodes | Cross-reference network across 883 statutes and subordinate legislation |
+| **Search Index** | 44K+ records | Full-text search over the entire corpus |
+| **Vector Embeddings** | 476,722 chunks | RAG-ready text chunks (nomic-embed-text-v1.5, 768-dim) in LanceDB |
+| **MCP Server** | Agent-native | Model Context Protocol interface for AI agent integration |
+| **Source Archives** | 15,660 archives | Immutable source text with SHA-256 verification |
 
 Every XML element carries a `sourceHash` (SHA-256 of the exact source-text
 span), so any provision can be independently audited against the original
@@ -59,18 +73,21 @@ government document.
 
 | Metric | Value |
 |---|---|
-| **Statutes** | 881 Acts of Parliament |
-| **Schedules** | 661 India Code schedules across 317 Acts |
-| **Notifications** | 1,216 CBIC notifications |
-| **Rules** | 102 rules documents, including Income-tax, GST, customs, excise, and service tax rules |
+| **Central Acts** | 883 Acts of Parliament |
+| **Schedules** | 661 across 317 Acts |
+| **Notifications** | 11,326 CBIC notifications (Customs, GST, Excise, Service Tax, Anti-Dumping, CVD, Safeguards) |
+| **Circulars** | 2,997 CBIC circulars |
+| **Orders** | 93 CBIC orders |
+| **Instructions** | 355 CBIC instructions |
+| **Rules** | 102 rules documents (Income-tax, GST, Customs, Excise, Service Tax) |
 | **Regulations** | 70 CBIC customs regulations |
-| **Forms** | 313 prescribed legal forms |
-| **Total XML documents** | **3,243** |
+| **Forms** | 572 prescribed legal forms |
+| **Total XML documents** | **17,057** |
 | **Graph edges** | **81,394** |
 | **Graph nodes** | 46,685 |
-| **RAG-ready chunks** | 204,499 |
-| **LanceDB vectors** | 204,499 |
-| **Source archives** | 3,580 |
+| **RAG-ready vector chunks** | 476,722 |
+| **Cross-references resolved** | 37,932 (99.5% resolution rate) |
+| **Source archives** | 15,660 |
 
 ### Legal Domain Coverage
 
@@ -87,6 +104,24 @@ government document.
 | **Constitutional** | Representation of the People Act, Electoral Bond Scheme, 9 total |
 | **Digital & Tech** | IT Act 2000, DPDP Act 2023, Aadhaar Act, 5 total |
 
+### CBIC Notification Coverage
+
+| Category | Count |
+|---|---|
+| Non-Tariff | 4,089 |
+| Tariff | 3,894 |
+| Anti-Dumping Duty | 705 |
+| Central Tax | 521 |
+| Central Tax (Rate) | 214 |
+| Integrated Tax | 37 |
+| Integrated Tax (Rate) | 228 |
+| Union Territory Tax | 44 |
+| Union Territory Tax (Rate) | 217 |
+| Compensation Cess (Rate) | 23 |
+| CVD | 37 |
+| Safeguards | 22 |
+| Others | 80+ |
+
 ---
 
 ## Architecture
@@ -96,7 +131,7 @@ flowchart LR
     subgraph Sources["Official Sources"]
         PDF["Government PDFs"]
         PORTAL["India Code Portal"]
-        CBIC["CBIC Notifications"]
+        CBIC["CBIC Tax Portal"]
     end
 
     subgraph Pipeline["Nyaya Ledger Pipeline"]
@@ -107,13 +142,13 @@ flowchart LR
     end
 
     subgraph Corpus["Canonical Corpus"]
-        XML["3,057 XML Documents<br/>Git-Versioned"]
+        XML["17,057 XML Documents<br/>Git-Versioned"]
     end
 
     subgraph Derived["Derived Artifacts"]
-        GRAPH["Knowledge Graph<br/>45K nodes · 80K edges"]
-        SEARCH["Search Index"]
-        VECTOR["Vector Chunks<br/>202K for RAG"]
+        GRAPH["Knowledge Graph<br/>47K nodes &middot; 81K edges"]
+        SEARCH["Search Index<br/>44K records"]
+        VECTOR["Vector Chunks<br/>476K for RAG"]
         MCP["MCP Server"]
     end
 
@@ -130,9 +165,8 @@ flowchart LR
 3. **Cryptographic provenance.** Every XML element carries `sourceStart`,
    `sourceEnd`, and `sourceHash` linking it to the exact bytes of the
    original government document.
-4. **Cross-reference graph.** 80,679 edges connect provisions across 876
-   statutes and 661 schedules, with unresolved targets triaged by class and
-   suggested remediation.
+4. **Cross-reference graph.** 81,394 edges connect provisions across 883
+   statutes, 661 schedules, 11,326 notifications, 2,997 circulars, and more.
 5. **Agent-native.** MCP server exposes the entire corpus as tools for
    AI agents and LLM-based workflows.
 
@@ -148,19 +182,19 @@ sections.
 
 ```mermaid
 graph LR
-    ITA["Income-tax Act, 1961<br/>935 sections · 2,805 refs"]
+    ITA["Income-tax Act, 1961<br/>935 sections &middot; 2,805 refs"]
 
     subgraph Hub["Most Referenced Provisions"]
-        S2["§2 Definitions<br/>252 refs"]
-        S112A["§112A<br/>123 refs"]
-        S111A["§111A<br/>124 refs"]
+        S2["&sect;2 Definitions<br/>252 refs"]
+        S112A["&sect;112A<br/>123 refs"]
+        S111A["&sect;111A<br/>124 refs"]
     end
 
     ITA --- Hub
 
     COMP["Companies Act<br/>40 refs"]
     CUST["Customs Act<br/>4 refs"]
-    ITR["IT Rules, 2026<br/>333 rules · 584 refs"]
+    ITR["IT Rules, 2026<br/>333 rules &middot; 584 refs"]
 
     ITA -->|"REFERS_TO"| COMP
     ITA -->|"REFERS_TO"| CUST
@@ -176,19 +210,19 @@ graph LR
 
 ### Patents Act, 1970 &mdash; Internal Hub Structure
 
-176 sections with 187 internal cross-references. §84 (compulsory licences)
+176 sections with 187 internal cross-references. &sect;84 (compulsory licences)
 is the most-referenced provision, serving as the central hub.
 
 ```mermaid
 graph TD
     PA["Patents Act, 1970<br/>176 sections"]
 
-    PA --- S117A["§117A Appeals<br/>24 outgoing refs"]
+    PA --- S117A["&sect;117A Appeals<br/>24 outgoing refs"]
     PA --- SCH["First Schedule<br/>24 outgoing refs"]
 
-    S84["§84 Compulsory Licences<br/>11 incoming refs"]
-    S35["§35 Secret Inventions<br/>9 incoming refs"]
-    S64["§64 Revocation<br/>7 incoming refs"]
+    S84["&sect;84 Compulsory Licences<br/>11 incoming refs"]
+    S35["&sect;35 Secret Inventions<br/>9 incoming refs"]
+    S64["&sect;64 Revocation<br/>7 incoming refs"]
 
     S117A --> S84 & S35 & S64
     SCH --> S84
@@ -206,18 +240,18 @@ targeted by 50+ referring provisions.
 
 ```mermaid
 graph TD
-    BNSS["BNSS, 2023<br/>532 sections · 680 refs"]
+    BNSS["BNSS, 2023<br/>532 sections &middot; 680 refs"]
 
-    subgraph Hub["Sentencing Hub §64-71"]
-        S64["§64 · 15 in"]
-        S70["§70 · 15 in"]
-        S65["§65 · 14 in"]
+    subgraph Hub["Sentencing Hub &sect;64-71"]
+        S64["&sect;64 &middot; 15 in"]
+        S70["&sect;70 &middot; 15 in"]
+        S65["&sect;65 &middot; 14 in"]
     end
 
     BNSS --- Hub
 
-    S243["§243 Maintenance · 21 out"]
-    SCHEDULE["Schedule · 50 out"]
+    S243["&sect;243 Maintenance &middot; 21 out"]
+    SCHEDULE["Schedule &middot; 50 out"]
 
     S243 --> S64 & S70
     SCHEDULE --> S64 & S70
@@ -277,12 +311,18 @@ make test
 ### Ingesting New Legislation
 
 ```bash
-# From a scraped JSON
+# From scraped India Code JSONs
 python3 scripts/bulk_ingest_acts.py
 
-# India Code schedules scraped from schedulefile links
+# India Code schedules
 python3 scripts/scrape_india_code_missing_acts.py --mode schedules-only
 python3 scripts/bulk_ingest_schedules.py
+
+# CBIC Tax Portal (acts, rules, regulations, forms)
+python3 scripts/bulk_ingest_cbic_tax_portal.py
+
+# CBIC documents (notifications, circulars, orders, instructions)
+python3 scripts/bulk_ingest_cbic_documents.py
 
 # From a PDF source
 python3 main.py corpus ingest path/to/act.pdf \
@@ -311,14 +351,19 @@ python3 main.py query CGST_Rules/Rule_10 --as-of 2025-10-31
 ### Building Derived Artifacts
 
 ```bash
-make verify          # Full verification gate (tests + compile + pipeline)
-python3 main.py graph rebuild      # Knowledge graph
-python3 main.py corpus unresolved-references  # Reference triage manifest
-python3 main.py search rebuild     # Search index
-python3 main.py vector chunks      # RAG-ready chunks
-python3 scripts/embed_vector_chunks.py  # Embeddings for missing chunks
-python3 scripts/build_lancedb_index.py  # LanceDB vector table
-python3 main.py pipeline verify    # 12-step verification
+make verify                            # Full verification gate
+python3 main.py graph rebuild          # Knowledge graph
+python3 main.py search rebuild         # Search index
+python3 main.py vector chunks          # RAG-ready chunks
+python3 scripts/embed_vector_chunks.py # Vector embeddings
+python3 scripts/build_lancedb_index.py # LanceDB index
+python3 main.py pipeline verify        # 12-step verification
+```
+
+### Running the MCP Server
+
+```bash
+python3 scripts/serve_mcp.py
 ```
 
 ---
@@ -327,9 +372,9 @@ python3 main.py pipeline verify    # 12-step verification
 
 | Source | Coverage | Access Method |
 |---|---|---|
-| [India Code](https://www.indiacode.nic.in) | 876 Central Acts + 661 schedules | DSpace catalog + Section/Schedule APIs |
+| [India Code](https://www.indiacode.nic.in) | 883 Central Acts + 661 schedules | DSpace catalog + Section/Schedule APIs |
 | [Income Tax Department](https://www.incometaxindia.gov.in) | IT Act, IT Rules, Forms | Liferay Search API |
-| [CBIC](https://www.cbic.gov.in) | 1,216 GST/customs notifications plus downloaded Tax Portal acts, rules, regulations, and forms | PDF archive + Tax Portal JSON |
+| [CBIC Tax Portal](https://taxinformation.cbic.gov.in) | 10,666 notifications, 3,325 circulars, 360 orders, 576 instructions, 15 acts, 95 rules, 71 regulations, 406 forms | Angular SPA reverse-engineered API |
 
 All data is sourced from official government portals. No proprietary or
 third-party legal databases are used.
@@ -340,46 +385,52 @@ third-party legal databases are used.
 
 ```
 git-for-law/
-├── main.py                       # CLI (40+ commands)
+├── main.py                          # CLI (40+ commands)
 ├── src/
-│   ├── legal_corpus/              # Core pipeline (21 modules)
-│   │   ├── source_archive.py      # Immutable source archiving
-│   │   ├── structure_parser.py    # Deterministic structure parsing
-│   │   ├── renderer.py            # Akoma Ntoso XML rendering
-│   │   ├── validator.py           # SourceHash verification
-│   │   ├── graph_index.py         # Knowledge graph builder
-│   │   ├── search_index.py        # Full-text search builder
-│   │   ├── vector_index.py        # RAG chunk builder
+│   ├── legal_corpus/                 # Core pipeline (21 modules)
+│   │   ├── source_archive.py         # Immutable source archiving
+│   │   ├── structure_parser.py       # Deterministic structure parsing
+│   │   ├── renderer.py               # Akoma Ntoso XML rendering
+│   │   ├── validator.py              # SourceHash verification
+│   │   ├── references.py             # Cross-reference resolution
+│   │   ├── graph_index.py            # Knowledge graph builder
+│   │   ├── search_index.py           # Full-text search builder
+│   │   ├── vector_index.py           # RAG chunk builder
+│   │   ├── html_renderer.py          # HTML rendering
 │   │   └── ...
-│   ├── models.py                  # Pydantic data models
-│   └── schemas/                   # JSON Schema definitions
-├── scripts/                       # Ingestion and scraping scripts
-│   ├── scrape_india_code_missing_acts.py   # India Code scraper
-│   ├── download_india_code_catalog.py      # Catalog downloader
-│   ├── ingest_it_act.py                    # IT Act 1961
-│   ├── ingest_it_rules_2026.py             # IT Rules 2026
-│   ├── split_ingest_it_rules_forms.py      # Forms extraction
-│   ├── bulk_ingest_acts.py                 # Bulk ingestion
-│   ├── bulk_ingest_schedules.py            # India Code schedule ingestion
+│   ├── models.py                     # Pydantic data models
+│   ├── mutation_parser.py            # Amendment/mutation parsing
+│   └── schemas/                      # JSON Schema definitions
+├── scripts/                          # Ingestion and scraping scripts
+│   ├── bulk_ingest_acts.py           # Bulk act ingestion from India Code
+│   ├── bulk_ingest_schedules.py      # India Code schedule ingestion
+│   ├── bulk_ingest_cbic_tax_portal.py # CBIC acts/rules/regulations/forms
+│   ├── bulk_ingest_cbic_documents.py  # CBIC notifications/circulars/orders/instructions
+│   ├── scrape_india_code_missing_acts.py  # India Code scraper
+│   ├── scrape_cbic_notifications_hybrid.py # CBIC notifications scraper
+│   ├── scrape_cbic_coi.py            # CBIC circulars/orders/instructions scraper
+│   ├── embed_vector_chunks.py        # Vector embedding generation
+│   ├── build_lancedb_index.py        # LanceDB index builder
+│   ├── serve_mcp.py                  # MCP server
 │   └── ...
 ├── tests/
-│   └── test_canonical_corpus.py   # 60 tests
+│   └── test_canonical_corpus.py      # 60 tests
 ├── docs/
-│   └── india_legal_profile.md     # Jurisdiction profile
+│   └── india_legal_profile.md        # Jurisdiction profile
 ├── Makefile
 ├── requirements.txt
-├── docker-compose.yml
-└── LICENSE                        # MIT
+├── docker-compose.yml                # Neo4j + FalkorDB
+└── LICENSE                           # MIT
 ```
 
 **Local-only directories** (generated, gitignored):
 
-| Directory | Purpose | Size |
+| Directory | Purpose | Content |
 |---|---|---|
-| `data/` | Raw PDFs, scraped JSONs | Variable |
-| `sources/` | Extracted text + metadata + checksums | ~575 MB |
-| `corpus/` | Canonical Akoma Ntoso XML (3,057 files) | ~178 MB |
-| `derived/` | Rebuildable graph, search, vector artifacts | ~14 GB |
+| `data/` | Raw PDFs, scraped JSONs | Official source data |
+| `sources/` | Extracted text + metadata + checksums | 15,660 source archives |
+| `corpus/` | Canonical Akoma Ntoso XML | 17,057 documents |
+| `derived/` | Rebuildable graph, search, vector artifacts | Graph, search index, 476K vectors |
 
 ---
 
@@ -401,7 +452,7 @@ sequenceDiagram
     Render->>Validate: Akoma Ntoso XML
     Validate->>Validate: Check metadata, sourceHash, paths
     Validate->>Corpus: Validated XML
-    Corpus->>Corpus: graph rebuild · search rebuild · vector chunks
+    Corpus->>Corpus: graph rebuild &middot; search rebuild &middot; vector chunks
 ```
 
 1. **Source Extraction** &mdash; Government PDFs and portal HTML are extracted
@@ -440,11 +491,14 @@ full version history.
 
 ## Roadmap
 
-- [x] **Full India Code coverage** &mdash; 876/846 Central Acts ingested (complete + pre-independence acts)
+- [x] **Full India Code coverage** &mdash; 883 Central Acts ingested (complete + pre-independence acts)
+- [x] **Subordinate legislation at scale** &mdash; 11,326 notifications, 2,997 circulars, 355 instructions, 93 orders
+- [x] **Rules and regulations** &mdash; Income-tax, GST, customs, excise, service tax rules + 70 CBIC regulations
+- [x] **Forms** &mdash; 572 prescribed legal forms
+- [x] **Vector-ready RAG** &mdash; 476,722 embeddings with LanceDB index
+- [x] **Knowledge graph** &mdash; 81K edges across 47K nodes
 - [ ] **State legislation** &mdash; India Code hosts state acts; extend pipeline
 - [ ] **Case law integration** &mdash; Supreme Court and High Court judgments
-- [x] **Subordinate legislation foundation** &mdash; Income-tax, GST, customs, excise, service tax rules plus 70 CBIC regulations and 313 forms
-- [ ] **Circulars and orders at scale** &mdash; Extend CBIC ingestion beyond downloaded rules, regulations, and forms
 - [ ] **Real-time monitoring** &mdash; Gazette watch for new amendments
 - [ ] **REST API** &mdash; Public API for programmatic access
 - [ ] **Multi-language** &mdash; Hindi and regional language support
@@ -457,22 +511,40 @@ full version history.
 | Who | How |
 |---|---|
 | **Legal AI companies** | RAG-ready vector chunks + knowledge graph for regulatory reasoning |
-| **Law firms** | Cross-reference analysis across 876 statutes for due diligence |
+| **Law firms** | Cross-reference analysis across 883 statutes for due diligence |
 | **Compliance teams** | Time-travel queries to determine applicable law on any date |
+| **Tax professionals** | Search 11,326 CBIC notifications, circulars, and instructions for tax research |
 | **Legal researchers** | Open, auditable dataset for empirical legal studies |
 | **Government agencies** | Version-controlled legislation with amendment tracking |
 | **Legal aid platforms** | Structured, searchable access to the law of the land |
+| **RegTech startups** | Structured regulatory data pipeline for compliance automation |
 
 ---
 
 ## Contributing
 
 1. Fork the repository
-2. Create a feature branch
+2. Create a feature branch (`git checkout -b feature/my-feature`)
 3. Run `make verify` to ensure all tests pass
 4. Submit a pull request
 
 CI runs tests, Python compilation, and the full verification gate on every push.
+
+---
+
+## Tech Stack
+
+| Component | Technology |
+|---|---|
+| Core pipeline | Python 3.10+, Pydantic v2 |
+| XML standard | Akoma Ntoso (OASIS) |
+| Graph databases | Neo4j 5, FalkorDB |
+| Search | Full-text JSONL index |
+| Vector store | LanceDB |
+| Embedding model | nomic-embed-text-v1.5 (768-dim) |
+| Agent interface | Model Context Protocol (MCP) |
+| API | FastAPI + Uvicorn |
+| CLI | Rich terminal UI |
 
 ---
 
@@ -484,8 +556,9 @@ MIT License. See [LICENSE](LICENSE).
 
 ## Acknowledgements
 
-- [Akoma Ntoso](http://www.akomantoso.org/) &mdash; XML standard for legislative documents
+- [Akoma Ntoso](http://www.akomantoso.org/) &mdash; XML standard for legislative documents (OASIS)
 - [India Code](https://www.indiacode.nic.in) &mdash; Official legislative database by National Informatics Centre
 - [Income Tax Department](https://www.incometaxindia.gov.in) &mdash; Publicly accessible tax law resources
 - [CBIC](https://www.cbic.gov.in) &mdash; Central Board of Indirect Taxes and Customs
-- Built with Python, Pydantic, Neo4j, Rich, and the Model Context Protocol
+- [LanceDB](https://lancedb.github.io/lancedb/) &mdash; Serverless vector database
+- [nomic-ai](https://nomic.ai) &mdash; Open embedding models
