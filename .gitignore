@@ -25,3 +25,4 @@ corpus/
 # separately as release assets or a dedicated dataset.
 *.pdf
 *.txt
+scraping_lessons_learned.md

@@ -146,14 +146,17 @@ flowchart LR
     end
 
     subgraph Derived["Derived Artifacts"]
-        GRAPH["Knowledge Graph<br/>47K nodes &middot; 81K edges"]
+        GRAPH["Knowledge Graph<br/>47K nodes - 81K edges"]
         SEARCH["Search Index<br/>44K records"]
         VECTOR["Vector Chunks<br/>476K for RAG"]
         MCP["MCP Server"]
     end
 
     Sources --> EXTRACT --> PARSE --> RENDER --> VALIDATE --> Corpus
-    Corpus --> GRAPH & SEARCH & VECTOR & MCP
+    Corpus --> GRAPH
+    Corpus --> SEARCH
+    Corpus --> VECTOR
+    Corpus --> MCP
 ```
 
 ### Design Principles
@@ -182,19 +185,19 @@ sections.
 
 ```mermaid
 graph LR
-    ITA["Income-tax Act, 1961<br/>935 sections &middot; 2,805 refs"]
+    ITA["Income-tax Act, 1961<br/>935 sections - 2,805 refs"]
 
     subgraph Hub["Most Referenced Provisions"]
-        S2["&sect;2 Definitions<br/>252 refs"]
-        S112A["&sect;112A<br/>123 refs"]
-        S111A["&sect;111A<br/>124 refs"]
+        S2["Section 2 Definitions<br/>252 refs"]
+        S112A["Section 112A<br/>123 refs"]
+        S111A["Section 111A<br/>124 refs"]
     end
 
     ITA --- Hub
 
     COMP["Companies Act<br/>40 refs"]
     CUST["Customs Act<br/>4 refs"]
-    ITR["IT Rules, 2026<br/>333 rules &middot; 584 refs"]
+    ITR["IT Rules, 2026<br/>333 rules - 584 refs"]
 
     ITA -->|"REFERS_TO"| COMP
     ITA -->|"REFERS_TO"| CUST
@@ -217,14 +220,16 @@ is the most-referenced provision, serving as the central hub.
 graph TD
     PA["Patents Act, 1970<br/>176 sections"]
 
-    PA --- S117A["&sect;117A Appeals<br/>24 outgoing refs"]
+    PA --- S117A["Section 117A Appeals<br/>24 outgoing refs"]
     PA --- SCH["First Schedule<br/>24 outgoing refs"]
 
-    S84["&sect;84 Compulsory Licences<br/>11 incoming refs"]
-    S35["&sect;35 Secret Inventions<br/>9 incoming refs"]
-    S64["&sect;64 Revocation<br/>7 incoming refs"]
+    S84["Section 84 Compulsory Licences<br/>11 incoming refs"]
+    S35["Section 35 Secret Inventions<br/>9 incoming refs"]
+    S64["Section 64 Revocation<br/>7 incoming refs"]
 
-    S117A --> S84 & S35 & S64
+    S117A --> S84
+    S117A --> S35
+    S117A --> S64
     SCH --> S84
 
     style PA fill:#117a65,color:#fff
@@ -240,21 +245,23 @@ targeted by 50+ referring provisions.
 
 ```mermaid
 graph TD
-    BNSS["BNSS, 2023<br/>532 sections &middot; 680 refs"]
+    BNSS["BNSS, 2023<br/>532 sections - 680 refs"]
 
-    subgraph Hub["Sentencing Hub &sect;64-71"]
-        S64["&sect;64 &middot; 15 in"]
-        S70["&sect;70 &middot; 15 in"]
-        S65["&sect;65 &middot; 14 in"]
+    subgraph Hub["Sentencing Hub Sections 64-71"]
+        S64["Section 64 - 15 in"]
+        S70["Section 70 - 15 in"]
+        S65["Section 65 - 14 in"]
     end
 
     BNSS --- Hub
 
-    S243["&sect;243 Maintenance &middot; 21 out"]
-    SCHEDULE["Schedule &middot; 50 out"]
+    S243["Section 243 Maintenance - 21 out"]
+    SCHEDULE["Schedule - 50 out"]
 
-    S243 --> S64 & S70
-    SCHEDULE --> S64 & S70
+    S243 --> S64
+    S243 --> S70
+    SCHEDULE --> S64
+    SCHEDULE --> S70
 
     style BNSS fill:#1a5276,color:#fff
     style S64 fill:#e74c3c,color:#fff
@@ -452,7 +459,7 @@ sequenceDiagram
     Render->>Validate: Akoma Ntoso XML
     Validate->>Validate: Check metadata, sourceHash, paths
     Validate->>Corpus: Validated XML
-    Corpus->>Corpus: graph rebuild &middot; search rebuild &middot; vector chunks
+    Corpus->>Corpus: graph rebuild, search rebuild, vector chunks
 ```
 
 1. **Source Extraction** &mdash; Government PDFs and portal HTML are extracted
