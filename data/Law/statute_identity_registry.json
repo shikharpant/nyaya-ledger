@@ -53,7 +53,7 @@
       "preferred_base_corpus_id": "/in/union/acts/cgst-act-2017",
       "base_as_of": "2017-07-01",
       "baseline_path": "derived/version_history/baselines/cgst-act-2017/2017-04-12",
-      "version_history_dir": "derived/version_history/act-cgst-2017",
+      "version_history_dir": "derived/version_history/cgst-act-2017",
       "base_source": "Original CGST Act JSON parsed from data/Law/base_laws/central_goods_and_services_tax_act_2017.json.",
       "source_priority": [
         "India Code",
