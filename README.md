@@ -351,8 +351,8 @@ python3 main.py corpus query /in/union/acts/income-tax-act-1961/section/112a
 # Full-text search
 python3 main.py search query "capital gains tax"
 
-# Time-travel query
-python3 main.py query CGST_Rules/Rule_10 --as-of 2025-10-31
+# Time-travel query (event-sourced version history)
+python3 main.py version reconstruct --component-id /in/union/rules/cgst-rules-2017/rule/10 --date 2025-10-31
 ```
 
 ### Building Derived Artifacts
@@ -478,11 +478,11 @@ sequenceDiagram
 ## Amendment & Time-Travel
 
 ```bash
-# Query a rule as of a specific date
-python3 main.py query CGST_Rules/Rule_10 --as-of 2025-10-31
+# Query a rule as of a specific date (event-sourced version history)
+python3 main.py version reconstruct --component-id /in/union/rules/cgst-rules-2017/rule/10 --date 2025-10-31
 
 # Compare a rule at two dates
-python3 main.py compare CGST_Rules/Rule_10 2025-10-31 2025-11-01
+python3 main.py version compare /in/union/rules/cgst-rules-2017/rule/10 --from-date 2025-10-31 --to-date 2025-11-01
 
 # Plan + apply amendments
 python3 main.py amendment plan sources/cbic/.../18-2025 \

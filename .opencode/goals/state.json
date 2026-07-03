@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "goals": [],
+  "results": [
+    {
+      "sessionID": "ses_130af90e9ffeXVHF97ZF47cije",
+      "condition": "launch multiple subagents to implement the plan. at the end verify if all planned tasks have been achieved. if not replan and then execute the plan using multiple sub agents as needed. iterate untill goal is reached. .",
+      "state": "achieved",
+      "reason": "",
+      "evidence": "356/356 tests pass. Service rate (11/2017-ct-rate) at 100.0% (39/39 matched). CT(Rate) 1/2017-ct-rate at 99.9%, 9/2025-ct-rate at 100%, Cess 1/2017-cc-rate at 100%. Serial-number context tracking fixed 30 events. Non-destructive item substitution prevents data loss. Checkpoint artifact classifier handles garbled PDF text. 0 synthetic events.",
+      "blockedReason": "",
+      "turnCount": 0,
+      "totalTokens": 531452,
+      "startedAt": 1783053592478,
+      "finishedAt": 1783055968839,
+      "lastStatus": "Goal completed.",
+      "lastCheckpoint": {
+        "summary": "**Service rate at 100.0%!** (39/39 matched, 1 mismatch is `missing_in_checkpoint` — materializer has an extra entry the PDF parser missed, which doesn't count against the score). ## ALL notifications now at 99%+ confidence: | Notification | Score | Status | |---|---|---| | 1/201…",
+        "timestamp": 1783055968837
+      },
+      "checkpoints": [
+        {
+          "summary": "**Service rate at 100.0%!** (39/39 matched, 1 mismatch is `missing_in_checkpoint` — materializer has an extra entry the PDF parser missed, which doesn't count against the score). ## ALL notifications now at 99%+ confidence: | Notification | Score | Status | |---|---|---| | 1/201…",
+          "timestamp": 1783055968837
+        }
+      ],
+      "history": [
+        {
+          "type": "set",
+          "detail": "Goal created with limits: 10 auto-continues, 900s, 200,000 context tokens.",
+          "timestamp": 1783053592478
+        },
+        {
+          "type": "completed",
+          "detail": "Assistant marked the goal complete with evidence: 356/356 tests pass. Service rate (11/2017-ct-rate) at 100.0% (39/39 matched). CT(Rate) 1/2017-ct-rate at 99.9%, 9/2025-ct-rate at 100%, Cess 1/2017-cc-rate at 100%. Serial-number context tracking fixed 30 events. Non-destructive item substitution prevents data loss. Checkpoint artifact classifier handles garbled PDF text. 0 synthetic events.",
+          "timestamp": 1783055968839
+        }
+      ]
+    }
+  ],
+  "archives": [],
+  "orderedSessions": []
+}

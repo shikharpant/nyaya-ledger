@@ -18,6 +18,11 @@ derived/
 # Local legal source/corpus artifacts. These can be regenerated or restored
 # locally and are intentionally not part of the main GitHub repository.
 data/
+!data/
+data/*
+!data/Law/
+data/Law/*
+!data/Law/statute_identity_registry.json
 sources/
 corpus/
 
@@ -26,3 +31,8 @@ corpus/
 *.pdf
 *.txt
 scraping_lessons_learned.md
+
+# Local tooling state
+.opencode/node_modules/
+.opencode/package-lock.json
+.zenith/

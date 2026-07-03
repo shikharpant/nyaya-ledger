@@ -1,0 +1,21 @@
+{
+  "mcpServers": {
+    "zenith": {
+      "type": "stdio",
+      "command": "uv",
+      "args": [
+        "run",
+        "--project",
+        "/home/shikhar/tools/zenith/zenith",
+        "zenith-server",
+        "--mode",
+        "orchestrator"
+      ],
+      "env": {
+        "ZENITH_ORCHESTRATOR_PROVIDER": "hermes",
+        "ZENITH_WORKER_PROVIDER": "hermes",
+        "ZENITH_WORKER_ACP_COMMAND": "hermes acp"
+      }
+    }
+  }
+}

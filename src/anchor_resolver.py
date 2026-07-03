@@ -49,13 +49,20 @@ def normalize_text(text: str) -> str:
     Normalize text for comparison.
     
     - Collapse multiple spaces/newlines to single space
-    - Normalize quotes (" → ", ' → ')
+    - Normalize all quote-like characters (curly quotes, horizontal bars, etc.)
+    - Normalize dashes
+    - Normalize form reference spacing (GSTR- 1 → GSTR-1)
     - Lowercase
     - Strip leading/trailing whitespace
     """
-    # Replace various quote types with standard ones
-    text = re.sub(r'[""]', '"', text)
-    text = re.sub(r"['']", "'", text)
+    # Normalize all quote-like characters to standard double quote
+    text = re.sub(r'[\u201c\u201d\u201e\u201f\u2016\u2018\u2019\u201a\u201b"]', '"', text)
+    # Normalize horizontal bar and broken bar (CBIC PDF uses these as quotes)
+    text = re.sub(r'[\u2015\u2014\u2013]', '-', text)
+    # Normalize form reference spacing: "GSTR- 1" → "GSTR-1", "GST- 3B" → "GST-3B"
+    text = re.sub(r'(GST[A-Z]?-)\s+(\d)', r'\1\2', text, flags=re.IGNORECASE)
+    # Normalize legal reference spacing: "sub- rule" → "sub-rule".
+    text = re.sub(r'\s*-\s*', '-', text)
     
     # Collapse whitespace
     text = re.sub(r'\s+', ' ', text)
@@ -124,13 +131,11 @@ def resolve_anchor(
     if pos_normalized != -1:
         # Find the actual position in original content
         # We need to map back from normalized position to original
-        original_pos = _map_normalized_to_original(target_content, normalized_anchor)
+        original_span = _map_normalized_to_original_span(target_content, normalized_anchor)
         
-        if original_pos != -1:
-            # Extract the actual matched text from original
-            end_pos = original_pos + len(anchor) + 10  # Approximate
-            actual_matched = target_content[original_pos:end_pos].split()[0:len(anchor.split())]
-            actual_matched = " ".join(actual_matched) if actual_matched else anchor
+        if original_span is not None:
+            original_pos, end_pos = original_span
+            actual_matched = target_content[original_pos:end_pos]
             
             return AnchorMatch(
                 anchor=anchor,
@@ -148,7 +153,7 @@ def resolve_anchor(
     )
 
 
-def _map_normalized_to_original(original: str, normalized_anchor: str) -> int:
+def _map_normalized_to_original_span(original: str, normalized_anchor: str) -> tuple[int, int] | None:
     """
     Map a position in normalized text back to original text.
     
@@ -157,7 +162,7 @@ def _map_normalized_to_original(original: str, normalized_anchor: str) -> int:
     # Simple approach: find words from anchor in original
     anchor_words = normalized_anchor.split()
     if not anchor_words:
-        return -1
+        return None
     
     first_word = anchor_words[0]
     original_lower = original.lower()
@@ -172,11 +177,20 @@ def _map_normalized_to_original(original: str, normalized_anchor: str) -> int:
         # Check if remaining words follow
         check_text = normalize_text(original[pos:pos + len(normalized_anchor) * 2])
         if check_text.startswith(normalized_anchor):
-            return pos
+            for end in range(pos + 1, min(len(original), pos + len(normalized_anchor) * 3) + 1):
+                if normalize_text(original[pos:end]) == normalized_anchor:
+                    return pos, end
+            return pos, pos + len(anchor_words[0])
         
         pos += 1
     
-    return -1
+    return None
+
+
+def _map_normalized_to_original(original: str, normalized_anchor: str) -> int:
+    """Backward-compatible start-position helper."""
+    span = _map_normalized_to_original_span(original, normalized_anchor)
+    return span[0] if span is not None else -1
 
 
 def compute_splice_result(

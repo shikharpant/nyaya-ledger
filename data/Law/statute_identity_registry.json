@@ -1,0 +1,66 @@
+{
+  "version": "statute-identity-registry-v1",
+  "works": [
+    {
+      "work_id": "/in/union/rules/cgst-rules-2017",
+      "title": "Central Goods and Services Tax Rules, 2017",
+      "document_type": "rules",
+      "jurisdiction": "IN-UNION",
+      "authority": "/in/authority/cbic",
+      "aliases": [
+        "CGST Rules, 2017",
+        "Central Goods and Services Tax Rules",
+        "Central Goods and Services Tax Rules, 2017",
+        "CGST_Rules_2017",
+        "CGST_Rules"
+      ],
+      "canonical_corpus_ids": [
+        "/in/union/rules/cgst-rules-2017",
+        "/in/union/rules/central-goods-and-services-tax-rules-2017"
+      ],
+      "preferred_base_corpus_id": "/in/union/rules/cgst-rules-2017",
+      "base_as_of": "2017-06-19",
+      "baseline_path": "derived/version_history/baselines/cgst-rules-2017/2017-06-19",
+      "version_history_dir": "derived/version_history/cgst-rules-2017",
+      "base_source": "Original CGST Rules PDF parsed from data/Law/base_laws/cgst-rules-2017-part-a-rules.pdf.",
+      "source_priority": [
+        "source archive/raw CBIC JSON",
+        "CBIC tax portal PDF",
+        "seeded canonical corpus"
+      ],
+      "notes": "V1 legal history is partial before base_as_of and materializes only deterministic Central Tax notification events."
+    },
+    {
+      "work_id": "/in/union/acts/cgst-act-2017",
+      "title": "The Central Goods and Services Tax Act, 2017",
+      "document_type": "act",
+      "jurisdiction": "IN-UNION",
+      "authority": "/in/authority/parliament-of-india",
+      "aliases": [
+        "CGST Act, 2017",
+        "Central Goods and Services Tax Act",
+        "Central Goods and Services Tax Act, 2017",
+        "The Central Goods and Services Tax Act, 2017",
+        "CGST_Act_2017",
+        "AC_CEN_2_2_00042_201712_1517807328102",
+        "15689"
+      ],
+      "canonical_corpus_ids": [
+        "/in/union/acts/cgst-act-2017",
+        "AC_CEN_2_2_00042_201712_1517807328102",
+        "15689"
+      ],
+      "preferred_base_corpus_id": "/in/union/acts/cgst-act-2017",
+      "base_as_of": "2017-07-01",
+      "baseline_path": "derived/version_history/baselines/cgst-act-2017/2017-04-12",
+      "version_history_dir": "derived/version_history/cgst-act-2017",
+      "base_source": "Original CGST Act JSON parsed from data/Law/base_laws/central_goods_and_services_tax_act_2017.json.",
+      "source_priority": [
+        "India Code",
+        "CBIC tax portal",
+        "seeded canonical corpus"
+      ],
+      "notes": "The long India Code act ID is intentionally aliased to the compact canonical work ID."
+    }
+  ]
+}

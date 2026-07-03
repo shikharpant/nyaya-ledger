@@ -14,7 +14,11 @@ Usage:
 
 import argparse
 import json
+import sys
+import os
 from datetime import datetime
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "src"))
 from pathlib import Path
 from rich.console import Console
 from rich.table import Table
@@ -1282,6 +1286,557 @@ def cmd_amendment_promote(args):
         raise SystemExit(1)
 
 
+def cmd_version_registry_validate(args):
+    """Validate the curated legal work identity registry."""
+    from src.legal_corpus.identity_registry import validate_registry
+
+    result = validate_registry(Path(args.registry))
+    console.print_json(json.dumps(result, ensure_ascii=False))
+    if not result["ok"]:
+        raise SystemExit(1)
+
+
+def cmd_version_llm_smoke(args):
+    """Smoke-test the configured OMLX endpoint."""
+    from src.legal_corpus.omlx_client import OmlxConfig, OmlxError, smoke_test
+
+    config = OmlxConfig.from_env(
+        base_url=args.llm_base_url,
+        model=args.llm_model,
+        api_key_env=args.llm_api_key_env,
+        timeout=args.timeout,
+    )
+    try:
+        result = smoke_test(config)
+    except OmlxError as exc:
+        result = {
+            "ok": False,
+            "reason": getattr(exc, "reason", "llm_unavailable"),
+            "error": str(exc),
+            "base_url": config.base_url,
+            "model": config.model,
+        }
+    console.print_json(json.dumps(result, ensure_ascii=False))
+    if not result.get("ok"):
+        raise SystemExit(1)
+
+
+def cmd_version_compile_events(args):
+    """Compile deterministic amendment events from CBIC notification JSON."""
+    if args.source_family in {"finance-acts", "cbic-acts", "taxation-acts"}:
+        from src.legal_corpus.act_amendment_events import compile_act_events
+
+        result = compile_act_events(
+            registry_path=Path(args.registry),
+            source_dir=Path(args.source_dir),
+            source_family=args.source_family,
+            target_work=args.target_work,
+            output=Path(args.output),
+            review_output=Path(args.review_output),
+            commencement_dir=Path(args.commencement_dir),
+        )
+        console.print_json(json.dumps(result, ensure_ascii=False))
+        return
+
+    from src.legal_corpus.amendment_events import compile_events
+
+    result = compile_events(
+        registry_path=Path(args.registry),
+        source_dir=Path(args.source_dir),
+        category=args.category,
+        target_work=args.target_work,
+        output=Path(args.output),
+        review_output=Path(args.review_output),
+        corpus_dir=Path(args.corpus_dir),
+        source_archive_root=Path(args.source_archive_root),
+        extract_pdf_text=args.extract_pdf_text,
+        use_llm=args.use_llm,
+        llm_base_url=args.llm_base_url,
+        llm_model=args.llm_model,
+        llm_api_key_env=args.llm_api_key_env,
+        llm_cache=Path(args.llm_cache) if args.llm_cache else None,
+        llm_limit=args.llm_limit,
+        llm_concurrency=args.llm_concurrency,
+    )
+    console.print_json(json.dumps({k: v for k, v in result.items() if k != "review_report"}, ensure_ascii=False))
+
+
+def cmd_version_build_baseline(args):
+    """Build a 2017 baseline for a registered work."""
+    from src.legal_corpus.baselines import build_baseline
+
+    result = build_baseline(
+        target_work=args.target_work,
+        registry_path=Path(args.registry),
+        output_dir=Path(args.output_dir) if args.output_dir else None,
+        rules_pdf=Path(args.rules_pdf),
+        rules_repair_notification=Path(args.rules_repair_notification) if args.rules_repair_notification else None,
+        act_json=Path(args.act_json),
+        use_llm=args.use_llm,
+        llm_base_url=args.llm_base_url,
+        llm_model=args.llm_model,
+        llm_api_key_env=args.llm_api_key_env,
+    )
+    console.print_json(json.dumps(result, ensure_ascii=False))
+    if not result.get("ok"):
+        raise SystemExit(1)
+
+
+def cmd_version_materialize(args):
+    """Materialize component versions and dated snapshots."""
+    from src.legal_corpus.version_snapshots import materialize_versions
+
+    manifest = materialize_versions(
+        target_work=args.target_work,
+        events_path=Path(args.events),
+        registry_path=Path(args.registry),
+        corpus_dir=Path(args.corpus_dir),
+        output_dir=Path(args.output_dir),
+        write_snapshots=args.write_snapshots,
+    )
+    console.print_json(json.dumps(manifest, ensure_ascii=False))
+
+
+def cmd_version_context_recovery(args):
+    """Recover full-text rule context and route reviewed work-ID events."""
+    from src.legal_corpus.context_recovery import recover_context
+
+    result = recover_context(
+        events_path=Path(args.events),
+        output=Path(args.output),
+        decisions_output=Path(args.decisions_output),
+        report_output=Path(args.report_output),
+        source_archive_root=Path(args.source_archive_root),
+        notifications_dir=Path(args.notifications_dir),
+    )
+    console.print_json(json.dumps(result, ensure_ascii=False))
+
+
+def cmd_version_corrigendum_application(args):
+    """Apply deterministic corrigendum corrections to amendment-event payloads."""
+    from src.legal_corpus.corrigenda import apply_corrigenda
+
+    result = apply_corrigenda(
+        events_path=Path(args.events),
+        output=Path(args.output),
+        report_output=Path(args.report_output),
+    )
+    console.print_json(json.dumps({k: v for k, v in result.items() if k != "applications"}, ensure_ascii=False))
+
+
+def cmd_version_merge_events(args):
+    """Merge event ledgers and surface cross-source conflicts."""
+    from src.legal_corpus.event_ledgers import merge_event_ledgers
+
+    result = merge_event_ledgers(
+        inputs=[Path(path) for path in args.inputs],
+        output=Path(args.output),
+        review_output=Path(args.review_output) if args.review_output else None,
+    )
+    console.print_json(json.dumps(result, ensure_ascii=False))
+
+
+def cmd_version_missing_anchor_backfill(args):
+    """Write source-backed events for known missing materializer anchors."""
+    from src.legal_corpus.missing_anchor_backfill import write_missing_anchor_backfill_events
+
+    result = write_missing_anchor_backfill_events(
+        corpus_dir=Path(args.corpus_dir),
+        output=Path(args.output),
+        report_output=Path(args.report_output) if args.report_output else None,
+    )
+    console.print_json(json.dumps(result, ensure_ascii=False))
+
+
+def cmd_version_compare(args):
+    """Compare materialized component versions between two dates."""
+    from src.legal_corpus.version_compare import compare_component_versions
+
+    result = compare_component_versions(
+        args.component_id,
+        from_date=args.from_date,
+        to_date=args.to_date,
+        temporal_dimension=args.temporal_dimension,
+        version_dir=Path(args.version_dir) if args.version_dir else None,
+        registry_path=Path(args.registry),
+        target_work=args.target_work,
+    )
+    console.print_json(json.dumps(result, ensure_ascii=False))
+
+
+def cmd_version_reconstruct(args):
+    """Reconstruct a single component's provision text at a given date."""
+    from src.legal_corpus.version_reconstruct import reconstruct_component
+
+    result = reconstruct_component(
+        args.component_id,
+        date=args.date,
+        version_dir=Path(args.version_dir) if args.version_dir else None,
+        registry_path=Path(args.registry),
+    )
+    console.print_json(json.dumps(result, ensure_ascii=False))
+
+
+def cmd_version_surgical_gap_queue(args):
+    """Build an actionable queue for remaining surgical Rules materializer gaps."""
+    from src.legal_corpus.surgical_gap_queue import build_surgical_gap_queue
+
+    result = build_surgical_gap_queue(
+        coverage_gaps_path=Path(args.coverage_gaps),
+        output=Path(args.output),
+        focus_rules=args.focus_rule,
+        limit=args.limit,
+    )
+    console.print_json(json.dumps(result["summary"], ensure_ascii=False))
+
+
+def cmd_version_reconcile(args):
+    """Reconcile reconstructed history against a consolidated checkpoint."""
+    from src.legal_corpus.reconciliation import reconcile
+
+    report = reconcile(
+        target_work=args.target_work,
+        checkpoint_path=Path(args.checkpoint_path),
+        checkpoint_date=args.checkpoint_date,
+        output=Path(args.output),
+        registry_path=Path(args.registry),
+        version_dir=Path(args.version_dir) if args.version_dir else None,
+        events_path=Path(args.events),
+        audit_output=Path(args.audit_output) if args.audit_output else None,
+    )
+    console.print_json(json.dumps(report, ensure_ascii=False))
+
+
+def cmd_version_materialize_forms(args):
+    """Build the conservative GST forms version-history lane."""
+    from src.legal_corpus.form_version_snapshots import materialize_form_versions
+
+    result = materialize_form_versions(
+        events_path=Path(args.events),
+        corpus_dir=Path(args.corpus_dir),
+        output_dir=Path(args.output_dir),
+        base_as_of=args.base_as_of,
+        form_registry_path=Path(args.form_registry) if args.form_registry else None,
+    )
+    console.print_json(json.dumps(result, ensure_ascii=False))
+
+
+def cmd_version_phase3_backlog(args):
+    """Write a consolidated Phase 3 backlog from current version-history artifacts."""
+    from src.legal_corpus.phase3_backlog import build_phase3_backlog
+
+    result = build_phase3_backlog(
+        rules_coverage_path=Path(args.rules_coverage),
+        forms_manifest_path=Path(args.forms_manifest),
+        portal_completeness_path=Path(args.portal_completeness),
+        confidence_tiers_path=Path(args.confidence_tiers),
+        act_audit_path=Path(args.act_audit),
+        reconciliation_report_path=Path(args.reconciliation_report),
+        output_path=Path(args.output),
+        sample_limit=args.sample_limit,
+    )
+    console.print_json(json.dumps(result, ensure_ascii=False))
+
+
+def cmd_version_html_report(args):
+    """Write a static HTML report for version-history review."""
+    from src.legal_corpus.version_history_report import write_version_history_report
+
+    result = write_version_history_report(
+        output=Path(args.output),
+        review_report=Path(args.review_report),
+        rules_manifest=Path(args.rules_manifest),
+        rules_coverage=Path(args.rules_coverage),
+        reconciliation_report=Path(args.reconciliation_report),
+        forms_manifest=Path(args.forms_manifest),
+        forms_coverage=Path(args.forms_coverage),
+        review_triage=Path(args.review_triage),
+        review_decisions=Path(args.review_decisions),
+        auto_review_decisions=Path(args.auto_review_decisions),
+        dependency_review_decisions=Path(args.dependency_review_decisions),
+        codex_review_decisions=Path(args.codex_review_decisions),
+        review_completion=Path(args.review_completion),
+        amendment_events=Path(args.amendment_events),
+        node_versions=Path(args.node_versions),
+        act_confidence_tiers=Path(args.act_confidence_tiers),
+        act_reconciliation_report=Path(args.act_reconciliation_report),
+        act_manifest=Path(args.act_manifest),
+    )
+    console.print_json(json.dumps(result, ensure_ascii=False))
+
+
+def cmd_version_triage_review(args):
+    """Triage needs_review amendment events into smaller review buckets."""
+    from src.legal_corpus.review_triage import triage_review_items
+
+    result = triage_review_items(
+        events_path=Path(args.events),
+        output=Path(args.output),
+        use_llm=args.use_llm,
+        llm_base_url=args.llm_base_url,
+        llm_model=args.llm_model,
+        llm_api_key_env=args.llm_api_key_env,
+        llm_cache=Path(args.llm_cache) if args.llm_cache else None,
+        llm_limit=args.llm_limit,
+        llm_concurrency=args.llm_concurrency,
+    )
+    console.print_json(json.dumps({k: v for k, v in result.items() if k not in {"items", "groups"}}, ensure_ascii=False))
+
+
+def cmd_version_apply_review_decisions(args):
+    """Apply curated review decisions to produce a promoted event ledger."""
+    from src.legal_corpus.review_decisions import apply_review_decisions
+
+    decision_paths = args.decisions or ["derived/version_history/review_decisions.json"]
+    result = apply_review_decisions(
+        events_path=Path(args.events),
+        decisions_path=[Path(path) for path in decision_paths],
+        output=Path(args.output),
+    )
+    console.print_json(json.dumps(result, ensure_ascii=False))
+
+
+def cmd_version_auto_review_decisions(args):
+    """Generate conservative auto-approval decisions for mechanically verifiable review items."""
+    from src.legal_corpus.review_decisions import generate_auto_review_decisions
+
+    result = generate_auto_review_decisions(
+        events_path=Path(args.events),
+        output=Path(args.output),
+        triage_path=Path(args.triage) if args.triage else None,
+        existing_decisions_path=Path(args.existing_decisions) if args.existing_decisions else None,
+        limit=args.limit,
+    )
+    console.print_json(json.dumps(result, ensure_ascii=False))
+
+
+def cmd_version_dependency_review_decisions(args):
+    """Generate auto-approval decisions for source events that create missing anchor components."""
+    from src.legal_corpus.review_decisions import generate_dependency_review_decisions
+
+    existing_decisions = args.existing_decisions or [
+        "derived/version_history/review_decisions.json",
+        "derived/version_history/auto_review_decisions.json",
+    ]
+    result = generate_dependency_review_decisions(
+        events_path=Path(args.events),
+        coverage_gaps_path=Path(args.coverage_gaps),
+        output=Path(args.output),
+        existing_decision_paths=[Path(path) for path in existing_decisions],
+        limit=args.limit,
+    )
+    console.print_json(json.dumps(result, ensure_ascii=False))
+
+
+def cmd_version_codex_review_decisions(args):
+    """Generate Codex-approved decisions for mechanically verified review items."""
+    from src.legal_corpus.review_decisions import generate_codex_review_decisions
+
+    existing_decisions = args.existing_decisions or [
+        "derived/version_history/review_decisions.json",
+        "derived/version_history/auto_review_decisions.json",
+        "derived/version_history/dependency_review_decisions.json",
+    ]
+    result = generate_codex_review_decisions(
+        events_path=Path(args.events),
+        node_versions_path=Path(args.node_versions),
+        output=Path(args.output),
+        existing_decision_paths=[Path(path) for path in existing_decisions],
+        source_archive_root=Path(args.source_archive_root) if args.source_archive_root else None,
+        limit=args.limit,
+    )
+    console.print_json(json.dumps(result, ensure_ascii=False))
+
+
+def cmd_version_complete_review(args):
+    """Classify pending review items into terminal audit states."""
+    from src.legal_corpus.review_completion import complete_review
+
+    decision_paths = args.decisions or [
+        "derived/version_history/review_decisions.json",
+        "derived/version_history/auto_review_decisions.json",
+        "derived/version_history/dependency_review_decisions.json",
+        "derived/version_history/codex_review_decisions.json",
+    ]
+    result = complete_review(
+        events_path=Path(args.events),
+        rules_manifest_path=Path(args.rules_manifest),
+        rules_coverage_path=Path(args.rules_coverage),
+        forms_manifest_path=Path(args.forms_manifest),
+        forms_coverage_path=Path(args.forms_coverage),
+        reconciliation_report_path=Path(args.reconciliation_report),
+        review_triage_path=Path(args.review_triage),
+        decision_paths=[Path(path) for path in decision_paths],
+        report_output=Path(args.report_output),
+        decisions_output=Path(args.decisions_output),
+    )
+    console.print_json(json.dumps(result, ensure_ascii=False))
+
+
+def cmd_version_fetch_consolidated(args):
+    """Fetch a consolidated source file for later reconciliation."""
+    from src.legal_corpus.consolidated_fetch import DEFAULT_RULES_CONSOLIDATED_URL, fetch_consolidated
+
+    url = args.url or DEFAULT_RULES_CONSOLIDATED_URL
+    manifest = fetch_consolidated(
+        target_work=args.target_work,
+        url=url,
+        output_dir=Path(args.output_dir),
+        timeout=args.timeout,
+        verify_tls=not args.insecure,
+        section_limit=args.section_limit,
+        section_timeout=args.section_timeout,
+        section_concurrency=args.section_concurrency,
+    )
+    console.print_json(json.dumps(manifest, ensure_ascii=False))
+
+
+def cmd_version_confidence_tiers(args):
+    """Compute per-component confidence tiers (A/B/C/D) for litigation readiness."""
+    from src.legal_corpus.confidence_tiers import compute_confidence_tiers
+
+    version_dir = Path(args.version_dir)
+    recon_report = Path(args.reconciliation_report) if args.reconciliation_report else version_dir / "reconciliation_report.json"
+    baseline_components = Path(args.baseline_components) if args.baseline_components else None
+
+    result = compute_confidence_tiers(
+        node_versions_path=version_dir / "node_versions.jsonl",
+        coverage_gaps_path=version_dir / "coverage_gaps.json",
+        reconciliation_report_path=recon_report if recon_report.exists() else None,
+        amendment_events_path=Path(args.amendment_events) if args.amendment_events else None,
+        baseline_components_path=baseline_components if baseline_components and baseline_components.exists() else None,
+        portal_completeness_path=Path(args.portal_completeness) if args.portal_completeness and Path(args.portal_completeness).exists() else None,
+    )
+
+    # Print summary
+    tier_counts = result["tier_counts"]
+    total = result["total_components"]
+    console.print(f"\n[bold]Confidence Tiers[/bold] ({total} components)")
+    for tier in ["A", "B", "C", "D"]:
+        count = tier_counts.get(tier, 0)
+        pct = 100 * count / max(total, 1)
+        desc = result["tier_descriptions"][tier]
+        console.print(f"  Tier {tier}: {count:4d} ({pct:5.1f}%)  {desc}")
+
+    tier_a = result["tier_a_components"]
+    if tier_a:
+        console.print(f"\n[green]Tier A components ({len(tier_a)}):[/green]")
+        for cid in tier_a[:20]:
+            console.print(f"  {cid}")
+        if len(tier_a) > 20:
+            console.print(f"  ... and {len(tier_a) - 20} more")
+
+    output = Path(args.output)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(json.dumps(result, indent=2, ensure_ascii=False, sort_keys=True), encoding="utf-8")
+    console.print(f"\nOutput: {output}")
+
+
+def cmd_version_evidence_bundle(args):
+    """Generate a citation-grade evidence bundle for a component/date range."""
+    from src.legal_corpus.evidence_bundles import generate_evidence_bundle
+
+    version_dir = Path(args.version_dir)
+    bundle = generate_evidence_bundle(
+        component_id=args.component_id,
+        from_date=args.from_date,
+        to_date=args.to_date,
+        version_dir=version_dir,
+        events_path=Path(args.events),
+        baseline_dir=Path(args.baseline_dir) if args.baseline_dir else version_dir.parent / "baselines" / "cgst-rules-2017" / "2017-06-19",
+        coverage_gaps_path=version_dir / "coverage_gaps.json",
+        confidence_tiers_path=Path(args.confidence_tiers) if args.confidence_tiers else Path("derived/version_history/confidence_tiers.json"),
+        portal_completeness_path=Path(args.portal_completeness) if args.portal_completeness else Path("derived/version_history/portal_completeness_report.json"),
+        corrigendum_ledger_path=version_dir / "corrigendum_ledger.jsonl",
+    )
+
+    output = Path(args.output)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(json.dumps(bundle, indent=2, ensure_ascii=False, sort_keys=True), encoding="utf-8")
+
+    readiness = bundle.get("citation_readiness", {})
+    console.print(f"\n[bold]Evidence Bundle[/bold]")
+    console.print(f"  Component: {args.component_id}")
+    console.print(f"  Date range: {args.from_date} → {args.to_date}")
+    console.print(f"  Tier: {readiness.get('tier','?')}")
+    console.print(f"  Events: {len(bundle.get('event_chain',[]))}")
+    console.print(f"  Versions: {len(bundle.get('node_versions',[]))}")
+    console.print(f"  Gaps: {readiness.get('unresolved_gaps',0)}")
+    console.print(f"  Can cite: {readiness.get('can_cite',False)}")
+    console.print(f"  Warning: {readiness.get('warning','')}")
+    console.print(f"\nOutput: {output}")
+
+
+def cmd_version_evidence_bundle_html(args):
+    """Render an evidence bundle JSON as a self-contained HTML document."""
+    from src.legal_corpus.evidence_bundles import render_evidence_bundle_html
+
+    bundle = json.loads(Path(args.bundle).read_text(encoding="utf-8"))
+    html = render_evidence_bundle_html(bundle)
+    output = Path(args.output)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(html, encoding="utf-8")
+    console.print(f"Output: {output}")
+
+
+def cmd_version_act_audit(args):
+    """Write a non-blocking CGST Act pipeline audit report."""
+    from src.legal_corpus.act_pipeline_audit import audit_act_pipeline
+
+    result = audit_act_pipeline(
+        events_path=Path(args.events),
+        coverage_gaps_path=Path(args.coverage_gaps),
+        materialization_manifest_path=Path(args.materialization_manifest),
+        baseline_components_path=Path(args.baseline_components),
+        baseline_reconciliation_path=Path(args.baseline_reconciliation),
+        confidence_tiers_path=Path(args.confidence_tiers),
+        output_path=Path(args.output),
+        sample_limit=args.sample_limit,
+    )
+    console.print_json(json.dumps(result, ensure_ascii=False))
+
+
+def cmd_version_portal_completeness(args):
+    """Check portal-listed notification references against the event ledger."""
+    from src.legal_corpus.portal_completeness import (
+        annotate_top10_gap_report,
+        build_portal_completeness_report,
+        rebuild_top10_gap_report,
+    )
+
+    result = build_portal_completeness_report(
+        html_dir=Path(args.html_dir),
+        events_path=Path(args.events),
+        output=Path(args.output),
+        top_rules=args.rule,
+    )
+    if args.top10_gap_report:
+        result["top10_gap_report_rebuild"] = rebuild_top10_gap_report(
+            coverage_gaps_path=Path(args.coverage_gaps),
+            output=Path(args.top10_gap_report),
+            top_n=args.top_n,
+        )
+        result["top10_gap_report_update"] = annotate_top10_gap_report(
+            top10_path=Path(args.top10_gap_report),
+            portal_report_path=Path(args.output),
+        )
+    console.print_json(json.dumps(result, ensure_ascii=False))
+
+
+def cmd_version_alias_checkpoint(args):
+    """Alias an already-downloaded checkpoint into a provenanced reconciliation source directory."""
+    from src.legal_corpus.consolidated_fetch import alias_downloaded_checkpoint
+
+    manifest = alias_downloaded_checkpoint(
+        source_dir=Path(args.source_dir),
+        output_dir=Path(args.output_dir),
+        checkpoint_date=args.checkpoint_date,
+        source_label=args.source_label,
+        required_labels=args.required_label,
+    )
+    console.print_json(json.dumps(manifest, ensure_ascii=False))
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Git for Law - Legal AST with Time-Travel Queries",
@@ -1745,7 +2300,1091 @@ def main():
     p_amendment_promote.add_argument("--git-commit", action="store_true", help="Create a Git commit for promoted paths")
     p_amendment_promote.add_argument("--message", help="Git commit message")
     p_amendment_promote.set_defaults(func=cmd_amendment_promote)
+
+    # version
+    p_version = subparsers.add_parser("version", help="Compile and query event-sourced legal version history")
+    version_sub = p_version.add_subparsers(dest="version_command")
+
+    p_version_registry = version_sub.add_parser("registry-validate", help="Validate statute identity registry")
+    p_version_registry.add_argument(
+        "--registry",
+        default="data/Law/statute_identity_registry.json",
+        help="Curated statute identity registry JSON",
+    )
+    p_version_registry.set_defaults(func=cmd_version_registry_validate)
+
+    p_version_llm_smoke = version_sub.add_parser("llm-smoke", help="Smoke-test configured OMLX JSON output")
+    p_version_llm_smoke.add_argument("--llm-base-url", default=None, help="OMLX/OpenAI-compatible base URL")
+    p_version_llm_smoke.add_argument("--llm-model", default=None, help="OMLX model ID")
+    p_version_llm_smoke.add_argument("--llm-api-key-env", default="OMLX_API_KEY", help="Environment variable containing API key")
+    p_version_llm_smoke.add_argument("--timeout", type=int, default=60, help="HTTP timeout in seconds")
+    p_version_llm_smoke.set_defaults(func=cmd_version_llm_smoke)
+
+    p_version_baseline = version_sub.add_parser("build-baseline", help="Build 2017 baseline XML/components")
+    p_version_baseline.add_argument(
+        "--registry",
+        default="data/Law/statute_identity_registry.json",
+        help="Curated statute identity registry JSON",
+    )
+    p_version_baseline.add_argument("--target-work", required=True, help="Canonical target work ID")
+    p_version_baseline.add_argument("--output-dir", default=None, help="Override baseline output directory")
+    p_version_baseline.add_argument(
+        "--rules-pdf",
+        default="data/Law/base_laws/cgst-rules-2017-part-a-rules.pdf",
+        help="Original CGST Rules PDF",
+    )
+    p_version_baseline.add_argument(
+        "--rules-repair-notification",
+        default="data/Law/cbic_tax_portal/notifications/3-2017-central-tax-notifying-the-cgst-rules-2017-on-registration-and-composition_1000872.json",
+        help="Optional CBIC notification JSON used as a source-priority repair track for original Rules components it covers",
+    )
+    p_version_baseline.add_argument(
+        "--act-json",
+        default="data/Law/base_laws/central_goods_and_services_tax_act_2017.json",
+        help="Original CGST Act JSON",
+    )
+    p_version_baseline.add_argument("--use-llm", action="store_true", help="Run OMLX baseline reconciliation track")
+    p_version_baseline.add_argument("--llm-base-url", default=None, help="OMLX/OpenAI-compatible base URL")
+    p_version_baseline.add_argument("--llm-model", default=None, help="OMLX model ID")
+    p_version_baseline.add_argument("--llm-api-key-env", default="OMLX_API_KEY", help="Environment variable containing API key")
+    p_version_baseline.set_defaults(func=cmd_version_build_baseline)
+
+    p_version_compile = version_sub.add_parser("compile-events", help="Compile CBIC notification amendment events")
+    p_version_compile.add_argument(
+        "--registry",
+        default="data/Law/statute_identity_registry.json",
+        help="Curated statute identity registry JSON",
+    )
+    p_version_compile.add_argument(
+        "--source-dir",
+        default="data/Law/cbic_tax_portal/notifications",
+        help="Directory containing CBIC notification JSON records",
+    )
+    p_version_compile.add_argument(
+        "--source-family",
+        default="cbic-central-tax",
+        choices=["cbic-central-tax", "finance-acts", "cbic-acts", "taxation-acts"],
+        help="Source family to compile",
+    )
+    p_version_compile.add_argument("--category", default="Central Tax", help="CBIC notification category")
+    p_version_compile.add_argument(
+        "--target-work",
+        default="/in/union/rules/cgst-rules-2017",
+        help="Canonical target work ID",
+    )
+    p_version_compile.add_argument("--corpus-dir", default="corpus", help="Canonical corpus directory")
+    p_version_compile.add_argument(
+        "--source-archive-root",
+        default="sources",
+        help="Source archive root used as text fallback",
+    )
+    p_version_compile.add_argument(
+        "--output",
+        default="derived/version_history/amendment_events.jsonl",
+        help="Output event JSONL path",
+    )
+    p_version_compile.add_argument(
+        "--review-output",
+        default="derived/version_history/review_report.json",
+        help="Output review report JSON path",
+    )
+    p_version_compile.add_argument(
+        "--extract-pdf-text",
+        action="store_true",
+        help="Fall back to extracting text from contentPdfBase64 when no text/source archive exists",
+    )
+    p_version_compile.add_argument("--use-llm", action="store_true", help="Use OMLX to propose unresolved candidates")
+    p_version_compile.add_argument("--llm-base-url", default=None, help="OMLX/OpenAI-compatible base URL")
+    p_version_compile.add_argument("--llm-model", default=None, help="OMLX model ID")
+    p_version_compile.add_argument("--llm-api-key-env", default="OMLX_API_KEY", help="Environment variable containing API key")
+    p_version_compile.add_argument(
+        "--llm-cache",
+        default="derived/version_history/llm_candidates.jsonl",
+        help="JSONL cache for OMLX candidate responses",
+    )
+    p_version_compile.add_argument("--llm-limit", type=int, default=None, help="Maximum new OMLX calls for this run")
+    p_version_compile.add_argument("--llm-concurrency", type=int, default=1, help="Maximum concurrent OMLX calls")
+    p_version_compile.add_argument(
+        "--commencement-dir",
+        default="data/Law/cbic_tax_portal/notifications",
+        help="CBIC notification directory for Finance Act commencement joins",
+    )
+    p_version_compile.set_defaults(func=cmd_version_compile_events)
+
+    p_version_merge = version_sub.add_parser("merge-events", help="Merge event JSONL ledgers and flag conflicts")
+    p_version_merge.add_argument("inputs", nargs="+", help="Input event JSONL files")
+    p_version_merge.add_argument("--output", required=True, help="Merged output event JSONL")
+    p_version_merge.add_argument("--review-output", default=None, help="Merged review report JSON")
+    p_version_merge.set_defaults(func=cmd_version_merge_events)
+
+    p_version_backfill = version_sub.add_parser(
+        "missing-anchor-backfill",
+        help="Write source-backed events for known missing rule anchors",
+    )
+    p_version_backfill.add_argument("--corpus-dir", default="corpus", help="Canonical corpus directory")
+    p_version_backfill.add_argument(
+        "--output",
+        default="derived/version_history/missing_anchor_backfill_events.jsonl",
+        help="Output backfill event JSONL",
+    )
+    p_version_backfill.add_argument(
+        "--report-output",
+        default="derived/version_history/missing_anchor_backfill_report.json",
+        help="Output backfill report JSON",
+    )
+    p_version_backfill.set_defaults(func=cmd_version_missing_anchor_backfill)
+
+    p_version_materialize = version_sub.add_parser("materialize", help="Materialize CGST Rules component versions")
+    p_version_materialize.add_argument(
+        "--target-work",
+        default="/in/union/rules/cgst-rules-2017",
+        help="Canonical target work ID",
+    )
+    p_version_materialize.add_argument(
+        "--events",
+        default="derived/version_history/amendment_events_reviewed.jsonl",
+        help="Input event JSONL path",
+    )
+    p_version_materialize.add_argument(
+        "--registry",
+        default="data/Law/statute_identity_registry.json",
+        help="Curated statute identity registry JSON",
+    )
+    p_version_materialize.add_argument("--corpus-dir", default="corpus", help="Canonical corpus directory")
+    p_version_materialize.add_argument(
+        "--output-dir",
+        default="derived/version_history/cgst-rules-2017",
+        help="Output version-history directory",
+    )
+    p_version_materialize.add_argument(
+        "--write-snapshots",
+        action="store_true",
+        help="Write dated full XML snapshots in addition to node_versions.jsonl",
+    )
+    p_version_materialize.set_defaults(func=cmd_version_materialize)
+
+    p_version_context_recovery = version_sub.add_parser(
+        "context-recovery",
+        help="Recover full-notification rule context and route work-ID review rows",
+    )
+    p_version_context_recovery.add_argument(
+        "--events",
+        default="derived/version_history/amendment_events_reviewed.jsonl",
+        help="Input reviewed event JSONL path",
+    )
+    p_version_context_recovery.add_argument(
+        "--output",
+        default="derived/version_history/amendment_events_reviewed.jsonl",
+        help="Output event JSONL path",
+    )
+    p_version_context_recovery.add_argument(
+        "--decisions-output",
+        default="derived/version_history/context_recovery_decisions.json",
+        help="Context recovery decisions JSON path",
+    )
+    p_version_context_recovery.add_argument(
+        "--report-output",
+        default="derived/version_history/context_recovery_report.json",
+        help="Context recovery report JSON path",
+    )
+    p_version_context_recovery.add_argument(
+        "--source-archive-root",
+        default="sources",
+        help="Local source archive root",
+    )
+    p_version_context_recovery.add_argument(
+        "--notifications-dir",
+        default="data/Law/cbic_tax_portal/notifications",
+        help="Fallback CBIC notification JSON directory",
+    )
+    p_version_context_recovery.set_defaults(func=cmd_version_context_recovery)
+
+    p_version_corrigendum_application = version_sub.add_parser(
+        "corrigendum-application",
+        help="Apply deterministic corrigendum corrections to reviewed event payloads",
+    )
+    p_version_corrigendum_application.add_argument(
+        "--events",
+        default="derived/version_history/amendment_events_reviewed.jsonl",
+        help="Input reviewed event JSONL path",
+    )
+    p_version_corrigendum_application.add_argument(
+        "--output",
+        default="derived/version_history/amendment_events_reviewed.jsonl",
+        help="Output corrected event JSONL path",
+    )
+    p_version_corrigendum_application.add_argument(
+        "--report-output",
+        default="derived/version_history/corrigendum_application_report.json",
+        help="Corrigendum application report JSON path",
+    )
+    p_version_corrigendum_application.set_defaults(func=cmd_version_corrigendum_application)
+
+    p_version_compare = version_sub.add_parser("compare", help="Compare materialized component versions")
+    p_version_compare.add_argument("component_id", help="Canonical or legacy component ID")
+    p_version_compare.add_argument("--from-date", required=True, help="From date YYYY-MM-DD")
+    p_version_compare.add_argument("--to-date", required=True, help="To date YYYY-MM-DD")
+    p_version_compare.add_argument(
+        "--temporal-dimension",
+        default="applicability",
+        choices=["applicability", "system"],
+        help="Temporal dimension for comparison",
+    )
+    p_version_compare.add_argument(
+        "--version-dir",
+        default=None,
+        help="Materialized version-history directory",
+    )
+    p_version_compare.add_argument(
+        "--registry",
+        default="data/Law/statute_identity_registry.json",
+        help="Curated statute identity registry JSON",
+    )
+    p_version_compare.add_argument("--target-work", default=None, help="Canonical target work ID")
+    p_version_compare.set_defaults(func=cmd_version_compare)
+
+    p_version_reconstruct = version_sub.add_parser("reconstruct", help="Reconstruct a component's provision text at a date")
+    p_version_reconstruct.add_argument("--component-id", required=True, help="Canonical or legacy component ID")
+    p_version_reconstruct.add_argument("--date", required=True, help="As-of date YYYY-MM-DD")
+    p_version_reconstruct.add_argument("--version-dir", default=None, help="Materialized version-history directory")
+    p_version_reconstruct.add_argument(
+        "--registry",
+        default="data/Law/statute_identity_registry.json",
+        help="Curated statute identity registry JSON",
+    )
+    p_version_reconstruct.set_defaults(func=cmd_version_reconstruct)
+
+    p_version_surgical_queue = version_sub.add_parser(
+        "surgical-gap-queue",
+        help="Build an actionable queue of remaining materializer-facing Rules gaps",
+    )
+    p_version_surgical_queue.add_argument(
+        "--coverage-gaps",
+        default="derived/version_history/cgst-rules-2017/coverage_gaps.json",
+        help="Rules coverage gaps JSON",
+    )
+    p_version_surgical_queue.add_argument(
+        "--output",
+        default="derived/version_history/cgst-rules-2017/surgical_gap_queue.json",
+        help="Output surgical gap queue JSON",
+    )
+    p_version_surgical_queue.add_argument(
+        "--focus-rule",
+        action="append",
+        default=["36", "45", "46", "138"],
+        help="Rule number to prioritize; repeatable",
+    )
+    p_version_surgical_queue.add_argument("--limit", type=int, default=None, help="Maximum queue items to emit")
+    p_version_surgical_queue.set_defaults(func=cmd_version_surgical_gap_queue)
+
+    p_version_reconcile = version_sub.add_parser("reconcile", help="Reconcile reconstructed history with a checkpoint")
+    p_version_reconcile.add_argument("--target-work", required=True, help="Canonical target work ID")
+    p_version_reconcile.add_argument("--checkpoint-path", required=True, help="Checkpoint XML file or directory")
+    p_version_reconcile.add_argument("--checkpoint-date", required=True, help="Checkpoint date YYYY-MM-DD")
+    p_version_reconcile.add_argument(
+        "--output",
+        default="derived/version_history/reconciliation_report.json",
+        help="Output reconciliation report JSON",
+    )
+    p_version_reconcile.add_argument(
+        "--registry",
+        default="data/Law/statute_identity_registry.json",
+        help="Curated statute identity registry JSON",
+    )
+    p_version_reconcile.add_argument("--version-dir", default=None, help="Override version-history directory")
+    p_version_reconcile.add_argument(
+        "--events",
+        default="derived/version_history/amendment_events_reviewed.jsonl",
+        help="Reviewed amendment events JSONL used to attribute unresolved reconciliation items",
+    )
+    p_version_reconcile.add_argument(
+        "--audit-output",
+        default=None,
+        help="Output unresolved reconciliation audit JSON; defaults next to the reconciliation report",
+    )
+    p_version_reconcile.set_defaults(func=cmd_version_reconcile)
+
+    p_version_forms = version_sub.add_parser("materialize-forms", help="Build conservative GST forms version history")
+    p_version_forms.add_argument(
+        "--events",
+        default="derived/version_history/amendment_events_reviewed.jsonl",
+        help="Rules amendment event JSONL containing form targets",
+    )
+    p_version_forms.add_argument("--corpus-dir", default="corpus", help="Canonical corpus directory")
+    p_version_forms.add_argument(
+        "--output-dir",
+        default="derived/version_history/forms",
+        help="Output directory for forms version-history artifacts",
+    )
+    p_version_forms.add_argument("--base-as-of", default="2017-06-19", help="Forms baseline date")
+    p_version_forms.add_argument(
+        "--form-registry",
+        default="derived/version_history/form_registry.json",
+        help="Form baseline registry with pending/ready status",
+    )
+    p_version_forms.set_defaults(func=cmd_version_materialize_forms)
+
+    p_version_phase3 = version_sub.add_parser(
+        "phase3-backlog",
+        help="Build the consolidated next backlog from current version-history artifacts",
+    )
+    p_version_phase3.add_argument(
+        "--rules-coverage",
+        default="derived/version_history/cgst-rules-2017/coverage_gaps.json",
+        help="Rules coverage gaps JSON",
+    )
+    p_version_phase3.add_argument(
+        "--forms-manifest",
+        default="derived/version_history/forms/materialization_manifest.json",
+        help="Forms materialization manifest JSON",
+    )
+    p_version_phase3.add_argument(
+        "--portal-completeness",
+        default="derived/version_history/portal_completeness_report.json",
+        help="Portal completeness report JSON",
+    )
+    p_version_phase3.add_argument(
+        "--confidence-tiers",
+        default="derived/version_history/confidence_tiers.json",
+        help="Confidence tiers JSON",
+    )
+    p_version_phase3.add_argument(
+        "--act-audit",
+        default="derived/version_history/cgst-act-2017/act_pipeline_audit.json",
+        help="CGST Act audit JSON",
+    )
+    p_version_phase3.add_argument(
+        "--reconciliation-report",
+        default="derived/version_history/cgst-rules-2017/reconciliation_report.json",
+        help="Rules reconciliation report JSON with unresolved audit data",
+    )
+    p_version_phase3.add_argument(
+        "--output",
+        default="derived/version_history/phase3_backlog.json",
+        help="Output Phase 3 backlog JSON",
+    )
+    p_version_phase3.add_argument("--sample-limit", type=int, default=10, help="Maximum sample IDs per item")
+    p_version_phase3.set_defaults(func=cmd_version_phase3_backlog)
+
+    p_version_html = version_sub.add_parser("html-report", help="Write version-history HTML review report")
+    p_version_html.add_argument(
+        "--output",
+        default="derived/version_history/review_report.html",
+        help="Output HTML report path",
+    )
+    p_version_html.add_argument(
+        "--review-report",
+        default="derived/version_history/review_report.json",
+        help="Compiler review report JSON",
+    )
+    p_version_html.add_argument(
+        "--rules-manifest",
+        default="derived/version_history/cgst-rules-2017/materialization_manifest.json",
+        help="Rules materialization manifest JSON",
+    )
+    p_version_html.add_argument(
+        "--rules-coverage",
+        default="derived/version_history/cgst-rules-2017/coverage_gaps.json",
+        help="Rules coverage gaps JSON",
+    )
+    p_version_html.add_argument(
+        "--reconciliation-report",
+        default="derived/version_history/cgst-rules-2017/reconciliation_report.json",
+        help="Rules reconciliation report JSON",
+    )
+    p_version_html.add_argument(
+        "--forms-manifest",
+        default="derived/version_history/forms/materialization_manifest.json",
+        help="Forms materialization manifest JSON",
+    )
+    p_version_html.add_argument(
+        "--forms-coverage",
+        default="derived/version_history/forms/coverage_gaps.json",
+        help="Forms coverage gaps JSON",
+    )
+    p_version_html.add_argument(
+        "--review-triage",
+        default="derived/version_history/review_triage.json",
+        help="Review triage JSON",
+    )
+    p_version_html.add_argument(
+        "--review-decisions",
+        default="derived/version_history/review_decisions.json",
+        help="Manual review decisions JSON",
+    )
+    p_version_html.add_argument(
+        "--auto-review-decisions",
+        default="derived/version_history/auto_review_decisions.json",
+        help="Auto review decisions JSON",
+    )
+    p_version_html.add_argument(
+        "--dependency-review-decisions",
+        default="derived/version_history/dependency_review_decisions.json",
+        help="Dependency review decisions JSON",
+    )
+    p_version_html.add_argument(
+        "--codex-review-decisions",
+        default="derived/version_history/codex_review_decisions.json",
+        help="Codex review decisions JSON",
+    )
+    p_version_html.add_argument(
+        "--review-completion",
+        default="derived/version_history/review_completion_report.json",
+        help="Review completion report JSON",
+    )
+    p_version_html.add_argument(
+        "--amendment-events",
+        default="derived/version_history/amendment_events_reviewed.jsonl",
+        help="Amendment-event ledger JSONL shown by the board",
+    )
+    p_version_html.add_argument(
+        "--node-versions",
+        default="derived/version_history/cgst-rules-2017/node_versions.jsonl",
+        help="Rules node versions JSONL sample source",
+    )
+    p_version_html.add_argument(
+        "--act-confidence-tiers",
+        default="derived/version_history/cgst-act-2017/confidence_tiers.json",
+        help="CGST Act confidence tiers JSON",
+    )
+    p_version_html.add_argument(
+        "--act-reconciliation-report",
+        default="derived/version_history/cgst-act-2017/reconciliation_report.json",
+        help="CGST Act reconciliation report JSON",
+    )
+    p_version_html.add_argument(
+        "--act-manifest",
+        default="derived/version_history/cgst-act-2017/materialization_manifest.json",
+        help="CGST Act materialization manifest JSON",
+    )
+    p_version_html.set_defaults(func=cmd_version_html_report)
+
+    p_version_triage = version_sub.add_parser("triage-review", help="Triage needs_review events into smaller review groups")
+    p_version_triage.add_argument(
+        "--events",
+        default="derived/version_history/amendment_events.jsonl",
+        help="Input amendment events JSONL",
+    )
+    p_version_triage.add_argument(
+        "--output",
+        default="derived/version_history/review_triage.json",
+        help="Output review triage JSON",
+    )
+    p_version_triage.add_argument("--use-llm", action="store_true", help="Use OMLX for ambiguous triage items")
+    p_version_triage.add_argument("--llm-base-url", default=None, help="OMLX/OpenAI-compatible base URL")
+    p_version_triage.add_argument("--llm-model", default=None, help="OMLX model ID")
+    p_version_triage.add_argument("--llm-api-key-env", default="OMLX_API_KEY", help="Environment variable containing API key")
+    p_version_triage.add_argument(
+        "--llm-cache",
+        default="derived/version_history/review_triage_llm_cache.jsonl",
+        help="JSONL cache for OMLX triage responses",
+    )
+    p_version_triage.add_argument("--llm-limit", type=int, default=None, help="Maximum new OMLX calls for this run")
+    p_version_triage.add_argument("--llm-concurrency", type=int, default=1, help="Maximum concurrent OMLX calls")
+    p_version_triage.set_defaults(func=cmd_version_triage_review)
+
+    p_version_apply_decisions = version_sub.add_parser(
+        "apply-review-decisions",
+        help="Apply curated review approvals to produce a promoted event ledger",
+    )
+    p_version_apply_decisions.add_argument(
+        "--events",
+        default="derived/version_history/amendment_events.jsonl",
+        help="Input amendment events JSONL",
+    )
+    p_version_apply_decisions.add_argument(
+        "--decisions",
+        action="append",
+        default=None,
+        help="Curated review decisions JSON",
+    )
+    p_version_apply_decisions.add_argument(
+        "--output",
+        default="derived/version_history/amendment_events_promoted.jsonl",
+        help="Output promoted amendment events JSONL",
+    )
+    p_version_apply_decisions.set_defaults(func=cmd_version_apply_review_decisions)
+
+    p_version_auto_decisions = version_sub.add_parser(
+        "auto-review-decisions",
+        help="Generate conservative auto-approvals for mechanically verifiable review items",
+    )
+    p_version_auto_decisions.add_argument(
+        "--events",
+        default="derived/version_history/amendment_events.jsonl",
+        help="Input amendment events JSONL",
+    )
+    p_version_auto_decisions.add_argument(
+        "--triage",
+        default="derived/version_history/review_triage.json",
+        help="Review triage JSON",
+    )
+    p_version_auto_decisions.add_argument(
+        "--existing-decisions",
+        default="derived/version_history/review_decisions.json",
+        help="Existing manual review decisions JSON to avoid duplicating",
+    )
+    p_version_auto_decisions.add_argument(
+        "--output",
+        default="derived/version_history/auto_review_decisions.json",
+        help="Output auto review decisions JSON",
+    )
+    p_version_auto_decisions.add_argument("--limit", type=int, default=None, help="Maximum auto decisions to generate")
+    p_version_auto_decisions.set_defaults(func=cmd_version_auto_review_decisions)
+
+    p_version_dependency_decisions = version_sub.add_parser(
+        "dependency-review-decisions",
+        help="Generate conservative auto-approvals for events that create missing materializer anchors",
+    )
+    p_version_dependency_decisions.add_argument(
+        "--events",
+        default="derived/version_history/amendment_events.jsonl",
+        help="Input amendment events JSONL",
+    )
+    p_version_dependency_decisions.add_argument(
+        "--coverage-gaps",
+        default="derived/version_history/cgst-rules-2017/coverage_gaps.json",
+        help="Coverage gaps JSON produced by materialization",
+    )
+    p_version_dependency_decisions.add_argument(
+        "--existing-decisions",
+        action="append",
+        default=None,
+        help="Existing review decisions JSON to avoid duplicating",
+    )
+    p_version_dependency_decisions.add_argument(
+        "--output",
+        default="derived/version_history/dependency_review_decisions.json",
+        help="Output dependency review decisions JSON",
+    )
+    p_version_dependency_decisions.add_argument("--limit", type=int, default=None, help="Maximum dependency decisions")
+    p_version_dependency_decisions.set_defaults(func=cmd_version_dependency_review_decisions)
+
+    p_version_codex_decisions = version_sub.add_parser(
+        "codex-review-decisions",
+        help="Generate Codex-approved exact text edit decisions",
+    )
+    p_version_codex_decisions.add_argument(
+        "--events",
+        default="derived/version_history/amendment_events_promoted.jsonl",
+        help="Input amendment events JSONL",
+    )
+    p_version_codex_decisions.add_argument(
+        "--node-versions",
+        default="derived/version_history/cgst-rules-2017/node_versions.jsonl",
+        help="Materialized node versions used to verify exact target text",
+    )
+    p_version_codex_decisions.add_argument(
+        "--existing-decisions",
+        action="append",
+        default=None,
+        help="Existing review decisions JSON to avoid duplicating",
+    )
+    p_version_codex_decisions.add_argument(
+        "--output",
+        default="derived/version_history/codex_review_decisions.json",
+        help="Output Codex review decisions JSON",
+    )
+    p_version_codex_decisions.add_argument(
+        "--source-archive-root",
+        default="sources",
+        help="Source archive root used to verify full source spans",
+    )
+    p_version_codex_decisions.add_argument("--limit", type=int, default=None, help="Maximum Codex decisions")
+    p_version_codex_decisions.set_defaults(func=cmd_version_codex_review_decisions)
+
+    p_version_complete_review = version_sub.add_parser(
+        "complete-review",
+        help="Classify every pending review item into a terminal audit state",
+    )
+    p_version_complete_review.add_argument(
+        "--events",
+        default="derived/version_history/amendment_events_reviewed.jsonl",
+        help="Input amendment events JSONL",
+    )
+    p_version_complete_review.add_argument(
+        "--rules-manifest",
+        default="derived/version_history/cgst-rules-2017/materialization_manifest.json",
+        help="Rules materialization manifest JSON",
+    )
+    p_version_complete_review.add_argument(
+        "--rules-coverage",
+        default="derived/version_history/cgst-rules-2017/coverage_gaps.json",
+        help="Rules coverage gaps JSON",
+    )
+    p_version_complete_review.add_argument(
+        "--forms-manifest",
+        default="derived/version_history/forms/materialization_manifest.json",
+        help="Forms materialization manifest JSON",
+    )
+    p_version_complete_review.add_argument(
+        "--forms-coverage",
+        default="derived/version_history/forms/coverage_gaps.json",
+        help="Forms coverage gaps JSON",
+    )
+    p_version_complete_review.add_argument(
+        "--reconciliation-report",
+        default="derived/version_history/cgst-rules-2017/reconciliation_report.json",
+        help="Rules reconciliation report JSON",
+    )
+    p_version_complete_review.add_argument(
+        "--review-triage",
+        default="derived/version_history/review_triage.json",
+        help="Review triage JSON",
+    )
+    p_version_complete_review.add_argument(
+        "--decisions",
+        action="append",
+        default=None,
+        help="Review decision JSON inputs",
+    )
+    p_version_complete_review.add_argument(
+        "--report-output",
+        default="derived/version_history/review_completion_report.json",
+        help="Output detailed review completion report JSON",
+    )
+    p_version_complete_review.add_argument(
+        "--decisions-output",
+        default="derived/version_history/review_completion_decisions.json",
+        help="Output compact terminal review decisions JSON",
+    )
+    p_version_complete_review.set_defaults(func=cmd_version_complete_review)
+
+    p_version_fetch = version_sub.add_parser("fetch-consolidated", help="Fetch consolidated source for reconciliation")
+    p_version_fetch.add_argument("--target-work", required=True, help="Canonical target work ID")
+    p_version_fetch.add_argument("--url", default=None, help="Consolidated source URL")
+    p_version_fetch.add_argument(
+        "--output-dir",
+        default="derived/version_history/reconciliation_sources/current",
+        help="Directory for fetched source and manifest",
+    )
+    p_version_fetch.add_argument("--timeout", type=int, default=60, help="HTTP timeout in seconds")
+    p_version_fetch.add_argument(
+        "--section-limit",
+        type=int,
+        default=None,
+        help="Maximum taxinformation rule HTML sections to fetch; omit for full checkpoint",
+    )
+    p_version_fetch.add_argument(
+        "--section-timeout",
+        type=int,
+        default=None,
+        help="Per-section timeout for taxinformation HTML fetches; defaults to min(--timeout, 10)",
+    )
+    p_version_fetch.add_argument(
+        "--section-concurrency",
+        type=int,
+        default=8,
+        help="Concurrent taxinformation HTML section fetches; defaults to 8",
+    )
+    p_version_fetch.add_argument(
+        "--insecure",
+        action="store_true",
+        help="Disable TLS certificate verification for official endpoints with broken local trust chains",
+    )
+    p_version_fetch.set_defaults(func=cmd_version_fetch_consolidated)
+
+    p_version_alias_checkpoint = version_sub.add_parser(
+        "alias-checkpoint",
+        help="Alias an already-downloaded checkpoint into a provenanced reconciliation source directory",
+    )
+    p_version_alias_checkpoint.add_argument(
+        "--source-dir",
+        default="derived/version_history/reconciliation_sources/taxinformation-2022-12-26",
+        help="Directory containing downloaded checkpoint.xml and checkpoint_components.jsonl",
+    )
+    p_version_alias_checkpoint.add_argument(
+        "--output-dir",
+        default="derived/version_history/reconciliation_sources/current-taxinformation",
+        help="Directory for the aliased current checkpoint",
+    )
+    p_version_alias_checkpoint.add_argument(
+        "--checkpoint-date",
+        default="2026-06-17",
+        help="Legal checkpoint date represented by this consolidated source",
+    )
+    p_version_alias_checkpoint.add_argument(
+        "--source-label",
+        default="current-cbic-taxinformation",
+        help="Human-readable source label written into checkpoint_manifest.json",
+    )
+    p_version_alias_checkpoint.add_argument(
+        "--required-label",
+        action="append",
+        default=["31C", "88C"],
+        help="Rule label that must be present in the aliased checkpoint; repeatable",
+    )
+    p_version_alias_checkpoint.set_defaults(func=cmd_version_alias_checkpoint)
+
+    p_version_portal = version_sub.add_parser(
+        "portal-completeness",
+        help="Compare TaxInformation/CBIC rule-page notification references against the event ledger",
+    )
+    p_version_portal.add_argument(
+        "--html-dir",
+        default="derived/version_history/reconciliation_sources/current-taxinformation/html",
+        help="Directory containing current TaxInformation/CBIC rule HTML pages",
+    )
+    p_version_portal.add_argument(
+        "--events",
+        default="derived/version_history/amendment_events_reviewed.jsonl",
+        help="Reviewed amendment events JSONL",
+    )
+    p_version_portal.add_argument(
+        "--output",
+        default="derived/version_history/portal_completeness_report.json",
+        help="Output portal completeness report JSON",
+    )
+    p_version_portal.add_argument(
+        "--rule",
+        action="append",
+        default=None,
+        help="Limit to a rule number; repeatable. Defaults to all HTML pages found.",
+    )
+    p_version_portal.add_argument(
+        "--top10-gap-report",
+        default="derived/version_history/cgst-rules-2017/top10_gap_report.json",
+        help="Optional top-10 gap report to annotate with portal missing-notification blockers",
+    )
+    p_version_portal.add_argument(
+        "--coverage-gaps",
+        default="derived/version_history/cgst-rules-2017/coverage_gaps.json",
+        help="Rules coverage gaps JSON used to rebuild the top-10 gap report before portal annotation",
+    )
+    p_version_portal.add_argument(
+        "--top-n",
+        type=int,
+        default=10,
+        help="Number of high-gap rules to include when rebuilding the top-10 gap report",
+    )
+    p_version_portal.set_defaults(func=cmd_version_portal_completeness)
+
+    p_version_tiers = version_sub.add_parser(
+        "confidence-tiers",
+        help="Compute per-component confidence tiers (A/B/C/D) for litigation readiness",
+    )
+    p_version_tiers.add_argument(
+        "--version-dir",
+        default="derived/version_history/cgst-rules-2017",
+        help="Version-history directory containing node_versions.jsonl and coverage_gaps.json",
+    )
+    p_version_tiers.add_argument(
+        "--reconciliation-report",
+        default=None,
+        help="Reconciliation report JSON (defaults to <version-dir>/reconciliation_report.json)",
+    )
+    p_version_tiers.add_argument(
+        "--amendment-events",
+        default="derived/version_history/amendment_events_reviewed.jsonl",
+        help="Reviewed amendment events JSONL",
+    )
+    p_version_tiers.add_argument(
+        "--baseline-components",
+        default=None,
+        help="Baseline components JSONL (defaults to the baseline dir from registry)",
+    )
+    p_version_tiers.add_argument(
+        "--output",
+        default="derived/version_history/confidence_tiers.json",
+        help="Output confidence tiers JSON",
+    )
+    p_version_tiers.add_argument(
+        "--portal-completeness",
+        default="derived/version_history/portal_completeness_report.json",
+        help="Portal completeness report JSON included as missing-source blockers when present",
+    )
+    p_version_tiers.set_defaults(func=cmd_version_confidence_tiers)
+
+    p_version_act_audit = version_sub.add_parser(
+        "act-audit",
+        help="Write a non-blocking CGST Act pipeline audit report",
+    )
+    p_version_act_audit.add_argument(
+        "--events",
+        default="derived/version_history/cgst-act-2017/merged_amendment_events.jsonl",
+        help="Merged CGST Act amendment events JSONL",
+    )
+    p_version_act_audit.add_argument(
+        "--coverage-gaps",
+        default="derived/version_history/cgst-act-2017/coverage_gaps.json",
+        help="CGST Act coverage gaps JSON",
+    )
+    p_version_act_audit.add_argument(
+        "--materialization-manifest",
+        default="derived/version_history/cgst-act-2017/materialization_manifest.json",
+        help="CGST Act materialization manifest JSON",
+    )
+    p_version_act_audit.add_argument(
+        "--baseline-components",
+        default="derived/version_history/baselines/cgst-act-2017/2017-04-12/baseline_components.jsonl",
+        help="CGST Act baseline components JSONL",
+    )
+    p_version_act_audit.add_argument(
+        "--baseline-reconciliation",
+        default="derived/version_history/baselines/cgst-act-2017/2017-04-12/baseline_reconciliation.json",
+        help="CGST Act baseline reconciliation JSON",
+    )
+    p_version_act_audit.add_argument(
+        "--confidence-tiers",
+        default="derived/version_history/cgst-act-2017/confidence_tiers.json",
+        help="Act-specific confidence tiers JSON",
+    )
+    p_version_act_audit.add_argument(
+        "--output",
+        default="derived/version_history/cgst-act-2017/act_pipeline_audit.json",
+        help="Output Act pipeline audit JSON",
+    )
+    p_version_act_audit.add_argument("--sample-limit", type=int, default=20, help="Maximum examples per audit queue")
+    p_version_act_audit.set_defaults(func=cmd_version_act_audit)
+
+    p_version_evidence = version_sub.add_parser(
+        "evidence-bundle",
+        help="Generate a citation-grade evidence bundle for a component and date range",
+    )
+    p_version_evidence.add_argument("--component-id", required=True, help="Canonical component ID")
+    p_version_evidence.add_argument("--from-date", required=True, help="Start date YYYY-MM-DD")
+    p_version_evidence.add_argument("--to-date", required=True, help="End date YYYY-MM-DD")
+    p_version_evidence.add_argument("--version-dir", default="derived/version_history/cgst-rules-2017", help="Version directory")
+    p_version_evidence.add_argument("--events", default="derived/version_history/amendment_events_reviewed.jsonl", help="Events JSONL")
+    p_version_evidence.add_argument("--baseline-dir", default=None, help="Baseline components directory")
+    p_version_evidence.add_argument("--confidence-tiers", default=None, help="Confidence tiers JSON")
+    p_version_evidence.add_argument("--portal-completeness", default=None, help="Portal completeness JSON")
+    p_version_evidence.add_argument("--output", default="derived/version_history/evidence_bundles/bundle.json", help="Output bundle JSON")
+    p_version_evidence.set_defaults(func=cmd_version_evidence_bundle)
+
+    p_version_evidence_html = version_sub.add_parser(
+        "evidence-bundle-html",
+        help="Render an evidence bundle JSON as a self-contained HTML document",
+    )
+    p_version_evidence_html.add_argument("--bundle", required=True, help="Evidence bundle JSON")
+    p_version_evidence_html.add_argument("--output", default="derived/version_history/evidence_bundles/bundle.html", help="Output HTML")
+    p_version_evidence_html.set_defaults(func=cmd_version_evidence_bundle_html)
+
+    # ── rate schedule commands ───────────────────────────────────────────
+    p_rate_parse = version_sub.add_parser("rate-parse-base", help="Parse a CT(Rate) notification XML into structured JSON")
+    p_rate_parse.add_argument("--xml", required=True, help="Notification XML path")
+    p_rate_parse.add_argument("--output", required=True, help="Output JSON path")
+    p_rate_parse.add_argument("--type", default="", help="Instrument type override")
+
+    p_rate_compile = version_sub.add_parser("rate-compile", help="Compile CT(Rate) amending notifications into rate events")
+    p_rate_compile.add_argument("--corpus-dir", default="corpus/in/union/notifications/cbic/central-tax-rate")
+    p_rate_compile.add_argument("--output", default="derived/version_history/rate-schedules/rate_amendment_events.jsonl")
+
+    p_rate_materialize = version_sub.add_parser("rate-materialize", help="Materialize rate schedules by replaying events")
+    p_rate_materialize.add_argument("--base", required=True, help="Base notification JSON")
+    p_rate_materialize.add_argument("--events", required=True, help="Rate events JSONL")
+    p_rate_materialize.add_argument("--target", required=True, help="Target notification e.g. 1/2017-ct-rate")
+    p_rate_materialize.add_argument("--checkpoint-date", default="", help="Checkpoint date YYYY-MM-DD")
+    p_rate_materialize.add_argument("--output", default="", help="Output snapshot JSON")
+
+    p_rate_reconcile = version_sub.add_parser("rate-reconcile", help="Reconcile materialized schedules against checkpoints")
+    p_rate_reconcile.add_argument("--base", default="derived/version_history/rate-schedules/base_1-2017.json")
+    p_rate_reconcile.add_argument("--events", default="derived/version_history/rate-schedules/rate_amendment_events.jsonl")
+    p_rate_reconcile.add_argument("--target", default="1/2017-ct-rate")
+    p_rate_reconcile.add_argument("--checkpoint-date", default="2022-05-01")
+    p_rate_reconcile.add_argument("--checkpoint-dir", default="derived/version_history/rate-schedules/checkpoints")
+    p_rate_reconcile.add_argument("--output", default="derived/version_history/rate-schedules/reconciliation_report.json")
+
+    p_rate_ledger = version_sub.add_parser("rate-ledger", help="Generate the HSN-to-rate ledger")
+    p_rate_ledger.add_argument("--base", default="derived/version_history/rate-schedules/base_1-2017.json")
+    p_rate_ledger.add_argument("--events", default="derived/version_history/rate-schedules/rate_amendment_events.jsonl")
+    p_rate_ledger.add_argument("--target", default="1/2017-ct-rate")
+    p_rate_ledger.add_argument("--checkpoint-date", default="")
+    p_rate_ledger.add_argument("--output", default="derived/version_history/rate-schedules/rate_ledger.json")
+
+    p_rate_validate = version_sub.add_parser("rate-validate", help="Horizontal HSN consistency validation")
+    p_rate_validate.add_argument("--base", default="derived/version_history/rate-schedules/base_1-2017.json")
+    p_rate_validate.add_argument("--events", default="derived/version_history/rate-schedules/rate_amendment_events.jsonl")
+    p_rate_validate.add_argument("--target", default="1/2017-ct-rate")
+    p_rate_validate.add_argument("--checkpoint-date", default="")
+
+    p_rate_concessional = version_sub.add_parser("rate-parse-concessional", help="Parse concessional rate notifications")
+    p_rate_concessional.add_argument("--corpus-dir", default="corpus/in/union/notifications/cbic/central-tax-rate")
+    p_rate_concessional.add_argument("--output-dir", default="derived/version_history/rate-schedules")
+
+    p_rate_query = version_sub.add_parser("rate-query", help="Query rate for HSN across all instruments")
+    p_rate_query.add_argument("--hsn", required=True, help="HSN code e.g. 6815")
+    p_rate_query.add_argument("--date", required=True, help="Query date YYYY-MM-DD")
+    p_rate_query.add_argument("--base", default="derived/version_history/rate-schedules/base_1-2017.json")
+    p_rate_query.add_argument("--events", default="derived/version_history/rate-schedules/rate_amendment_events.jsonl")
+    p_rate_query.add_argument("--target", default="1/2017-ct-rate")
+
+    p_rate_adjudicate = version_sub.add_parser("rate-adjudicate", help="Adjudicate mismatches: identify CBIC discrepancies")
+    p_rate_adjudicate.add_argument("--base", default="derived/version_history/rate-schedules/base_1-2017.json")
+    p_rate_adjudicate.add_argument("--events", default="derived/version_history/rate-schedules/rate_amendment_events.jsonl")
+    p_rate_adjudicate.add_argument("--target", default="1/2017-ct-rate")
+    p_rate_adjudicate.add_argument("--checkpoint-date", default="2022-05-01")
+    p_rate_adjudicate.add_argument("--checkpoint-dir", default="derived/version_history/rate-schedules/checkpoints")
+    p_rate_adjudicate.add_argument("--output", default="derived/version_history/rate-schedules/adjudication_report.json")
     
+    # ── rate schedule command handlers ───────────────────────────────────
+    def cmd_rate_parse_base(args):
+        from legal_corpus.rate_schedule_parser import parse_and_save
+        rn = parse_and_save(args.xml, args.output, args.type)
+        print(f"Parsed {rn.cbic_no}: {len(rn.schedules)} schedules, {rn.entry_count()} entries")
+        for sid, sched in sorted(rn.schedules.items()):
+            print(f"  Schedule {sid} ({sched.rate_pct}%): {len(sched.entries)} entries")
+
+    def cmd_rate_compile(args):
+        from legal_corpus.rate_schedule_compiler import compile_all_amendments
+        events = compile_all_amendments(args.corpus_dir, output_path=args.output)
+        print(f"Compiled {len(events)} events → {args.output}")
+        from collections import Counter
+        for op, cnt in Counter(e.operation for e in events).most_common():
+            print(f"  {op}: {cnt}")
+
+    def cmd_rate_materialize(args):
+        from legal_corpus.rate_schedule_materializer import materialize_schedule
+        result = materialize_schedule(
+            args.base, args.events, args.target,
+            output_path=args.output or None,
+            checkpoint_date=args.checkpoint_date or None,
+        )
+        print(f"Target: {args.target}")
+        if args.checkpoint_date:
+            print(f"Checkpoint: {args.checkpoint_date}")
+        print(f"Events applied: {result['events_applied']}, failed: {result['events_failed']}")
+        print(f"Total entries: {result['total_entries']}")
+        for sid, sched in sorted(result["schedules"].items()):
+            active = len([e for e in sched["entries"] if not e.get("is_omitted")])
+            print(f"  Schedule {sid} ({sched['rate_pct']}%): {active} active, {len(sched['entries'])} total")
+
+    def cmd_rate_reconcile(args):
+        from legal_corpus.rate_schedule_materializer import materialize_schedule
+        from legal_corpus.rate_reconciliation import reconcile_schedule
+        import json
+        snap = materialize_schedule(
+            args.base, args.events, args.target,
+            checkpoint_date=args.checkpoint_date or None,
+        )
+        import os
+        cp_files = [f for f in os.listdir(args.checkpoint_dir) if f.startswith("checkpoint_")]
+        for cpf in sorted(cp_files):
+            cp_date = cpf.replace("checkpoint_", "").replace(".json", "")
+            if args.checkpoint_date and cp_date != args.checkpoint_date:
+                continue
+            with open(os.path.join(args.checkpoint_dir, cpf)) as f:
+                cp = json.load(f)
+            report = reconcile_schedule(snap, cp, args.target)
+            cp_entries = sum(s["entry_counts"].get("exact_match",0)+s["entry_counts"].get("format_only_match",0)+
+                            s["entry_counts"].get("description_mismatch",0)+s["entry_counts"].get("tariff_mismatch",0)+
+                            s["entry_counts"].get("missing_in_materialized",0)+s["entry_counts"].get("omitted_match",0)
+                            for s in report.get("schedules",{}).values())
+            mat_entries = sum(s["entry_counts"].get("exact_match",0)+s["entry_counts"].get("format_only_match",0)+
+                             s["entry_counts"].get("description_mismatch",0)+s["entry_counts"].get("tariff_mismatch",0)+
+                             s["entry_counts"].get("missing_in_checkpoint",0)+s["entry_counts"].get("omitted_match",0)
+                             for s in report.get("schedules",{}).values())
+            matched = sum(s["entry_counts"].get("exact_match",0)+s["entry_counts"].get("format_only_match",0)
+                         for s in report.get("schedules",{}).values())
+            print(f"Checkpoint {cp_date}: cp={cp_entries} mat={mat_entries} matched={matched} ({matched/max(cp_entries,1)*100:.1f}%)")
+            for sid in sorted(report.get("schedules",{}).keys()):
+                s = report["schedules"][sid]
+                ec = s["entry_counts"]
+                print(f"  Sched {sid}: exact={ec.get('exact_match',0)} fmt={ec.get('format_only_match',0)} "
+                      f"miss_cp={ec.get('missing_in_materialized',0)} miss_mat={ec.get('missing_in_checkpoint',0)} "
+                      f"tariff_mm={ec.get('tariff_mismatch',0)} desc_mm={ec.get('description_mismatch',0)}")
+        if args.output:
+            with open(args.output, "w") as f:
+                json.dump(report, f, indent=2, ensure_ascii=False)
+
+    def cmd_rate_ledger(args):
+        from legal_corpus.rate_schedule_materializer import materialize_schedule
+        from legal_corpus.rate_ledger import build_rate_ledger
+        snap = materialize_schedule(
+            args.base, args.events, args.target,
+            checkpoint_date=args.checkpoint_date or None,
+        )
+        ledger = build_rate_ledger([snap], args.output)
+        print(f"Rate ledger: {ledger['total_hsns']} HSNs")
+        print(f"Saved to {args.output}")
+
+    def cmd_rate_validate(args):
+        from legal_corpus.rate_schedule_materializer import materialize_schedule
+        from legal_corpus.rate_horizontal_validator import validate_horizontal
+        snap = materialize_schedule(
+            args.base, args.events, args.target,
+            checkpoint_date=args.checkpoint_date or None,
+        )
+        result = validate_horizontal(snap)
+        print(f"Valid: {result['valid']}")
+        print(f"Errors: {len(result['errors'])}")
+        print(f"Warnings: {len(result['warnings'])}")
+        print(f"Stats: {result['stats']}")
+        for err in result["errors"][:10]:
+            print(f"  ERROR: {err}")
+        for warn in result["warnings"][:5]:
+            print(f"  WARN: {warn}")
+
+    def cmd_rate_concessional(args):
+        from legal_corpus.rate_concessional_parser import parse_all_concessional
+        results = parse_all_concessional(args.corpus_dir, args.output_dir)
+        print(f"Parsed {len(results)} concessional instruments:")
+        for sid, result in sorted(results.items()):
+            entries = result.get("schedules", {}).get("I", {}).get("entries", [])
+            rate = result.get("rate_pct", 0)
+            conds = result.get("conditions", [])
+            print(f"  {sid}: rate={rate}%, entries={len(entries)}, conditions={len(conds)}")
+
+    def cmd_rate_query(args):
+        from legal_corpus.rate_schedule_materializer import materialize_schedule
+        from legal_corpus.rate_ledger import build_rate_ledger, query_rate_multi_instrument
+        from legal_corpus.rate_concessional_parser import parse_all_concessional
+        snap = materialize_schedule(
+            args.base, args.events, args.target,
+            checkpoint_date=args.date,
+        )
+        ledger = build_rate_ledger([snap])
+        concessional = parse_all_concessional()
+        result = query_rate_multi_instrument(ledger, concessional, args.hsn, args.date)
+        print(f"HSN: {result['hsn']} @ {result['query_date']}")
+        if result["primary_rate"]:
+            pr = result["primary_rate"]
+            print(f"  Primary:      CGST={pr['cgst_rate_pct']}% GST={pr['gst_rate_pct']}% "
+                  f"Schedule={pr['schedule']} ({pr['notification']})")
+        for cr in result["concessional_rates"]:
+            print(f"  Concessional: CGST={cr['cgst_rate_pct']}% GST={cr['gst_rate_pct']}% "
+                  f"({cr['notification']}) — {cr['description'][:60]}")
+        if result["exemption"]:
+            print(f"  Exemption:    {result['exemption']}")
+
+    def cmd_rate_adjudicate(args):
+        from legal_corpus.rate_schedule_materializer import materialize_schedule
+        from legal_corpus.rate_reconciliation import reconcile_schedule
+        from legal_corpus.rate_confidence import generate_adjudication_report
+        import os
+        snap = materialize_schedule(
+            args.base, args.events, args.target,
+            checkpoint_date=args.checkpoint_date or None,
+        )
+        cp_file = os.path.join(args.checkpoint_dir, f"checkpoint_{args.checkpoint_date}.json")
+        with open(cp_file) as f:
+            cp = json.load(f)
+        report = reconcile_schedule(snap, cp, args.target)
+        adj = generate_adjudication_report(report, args.events, output_path=args.output)
+        s = adj["summary"]
+        print(f"Adjudication: {args.target} @ {args.checkpoint_date}")
+        print(f"  Total:          {s['total']}")
+        print(f"  Matched:        {s['matched']} ({s['match_rate']}%)")
+        print(f"  Conf match:     {s['confidence_match_rate']}% (incl CP errors + CBIC discrepancies)")
+        print(f"  Mat errors:     {s['materializer_errors']}")
+        print(f"  CBIC discr:     {s['cbic_discrepancies']}")
+        print(f"  Ambiguous:      {s['ambiguous']}")
+        cbic = [e for e in adj["entries"] if e["verdict"] == "cbic_discrepancy"]
+        if cbic:
+            print(f"\n  CBIC Discrepancies:")
+            for e in cbic[:10]:
+                print(f"    Sched {e['schedule']} sno={e['sno']}: {e['evidence'][:100]}")
+
+    p_rate_parse.set_defaults(func=cmd_rate_parse_base)
+    p_rate_compile.set_defaults(func=cmd_rate_compile)
+    p_rate_materialize.set_defaults(func=cmd_rate_materialize)
+    p_rate_reconcile.set_defaults(func=cmd_rate_reconcile)
+    p_rate_ledger.set_defaults(func=cmd_rate_ledger)
+    p_rate_validate.set_defaults(func=cmd_rate_validate)
+    p_rate_concessional.set_defaults(func=cmd_rate_concessional)
+    p_rate_query.set_defaults(func=cmd_rate_query)
+    p_rate_adjudicate.set_defaults(func=cmd_rate_adjudicate)
+
     args = parser.parse_args()
     
     if args.command is None or not hasattr(args, "func"):

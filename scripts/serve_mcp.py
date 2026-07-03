@@ -60,6 +60,20 @@ def create_mcp_server(*, host: str = "127.0.0.1", port: int = 8090) -> FastMCP:
         )
 
     @server.tool()
+    def provision_search(query: str, limit: int = 10, provision_type: str = "", document_type: str = "") -> dict[str, Any]:
+        """Semantic search over provision-level chunks (sections, rules, sub-rules, forms).
+
+        Returns results aligned to legal provisions rather than flat token windows.
+        Each result carries the provision canonical_id, provision_type, and number.
+        """
+        return service().semantic_search_provision(
+            query,
+            limit=limit,
+            provision_type=_optional(provision_type),
+            document_type=_optional(document_type),
+        )
+
+    @server.tool()
     def resolve_citation(citation: str, limit: int = 10) -> dict[str, Any]:
         """Convert a human citation such as 'section 128A CGST Act' into canonical ID candidates."""
         return service().resolve_citation(citation, limit=limit)
@@ -96,8 +110,44 @@ def create_mcp_server(*, host: str = "127.0.0.1", port: int = 8090) -> FastMCP:
 
     @server.tool()
     def compare_versions(canonical_id: str, from_date: str = "", to_date: str = "") -> dict[str, Any]:
-        """Future tool: compare amended provision states once the time-travel corpus is materialized."""
+        """Compare a provision's text between two dates. Returns the text at each date, a unified diff, and events between."""
         return service().compare_versions(canonical_id, from_date=_optional(from_date), to_date=_optional(to_date))
+
+    @server.tool()
+    def get_provision_as_of_date(canonical_id: str, date: str) -> dict[str, Any]:
+        """Return the exact provision text in force on a given date, with full provenance (version_id, text_sha256, event_chain, source_basis)."""
+        return service().get_provision_as_of_date(canonical_id, date=date)
+
+    @server.tool()
+    def list_amendments(canonical_id: str) -> dict[str, Any]:
+        """Return the ordered chain of amendments that affected a provision, each with event_id, operation, effective_date, and source document."""
+        return service().list_amendments(canonical_id)
+
+    @server.tool()
+    def get_provision_timeline(canonical_id: str) -> dict[str, Any]:
+        """Return all dated versions of a provision across its lifecycle, each with applicability dates, version_id, text_sha256, and snippet."""
+        return service().get_provision_timeline(canonical_id)
+
+    @server.tool()
+    def query_law_as_of_date(act: str, section: str, date: str) -> dict[str, Any]:
+        """Query the exact position of law by act name + section number + date. Resolves the citation, reconstructs the provision text at that date, and returns the amendment chain. Example: act='CGST Act', section='16', date='2024-01-01'."""
+        citation = f"section {section} {act}"
+        resolved = service().resolve_citation(citation, limit=5)
+        candidates = resolved.get("candidates", [])
+        if not candidates:
+            return {"status": "not_found", "citation": citation, "date": date, "message": f"Could not resolve '{citation}' to a canonical provision."}
+        # Prefer candidates that exist in the corpus
+        canonical_id = None
+        for c in candidates:
+            if c.get("exists"):
+                canonical_id = c["canonical_id"]
+                break
+        if not canonical_id:
+            canonical_id = candidates[0]["canonical_id"]
+        result = service().get_provision_as_of_date(canonical_id, date=date)
+        result["citation"] = citation
+        result["resolved_canonical_id"] = canonical_id
+        return result
 
     return server
 

@@ -1,0 +1,164 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://git-for-law.local/schemas/amendment_event.schema.json",
+  "title": "Legal amendment event",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "event_id",
+    "event_type",
+    "operation",
+    "source",
+    "legal_time",
+    "system_time",
+    "target",
+    "payload",
+    "evidence",
+    "validation",
+    "status",
+    "review"
+  ],
+  "properties": {
+    "event_id": {"type": "string", "minLength": 1},
+    "event_type": {"type": "string", "enum": ["TEXTUAL_AMENDMENT", "LEGAL_STATUS"]},
+    "operation": {
+      "type": "string",
+      "enum": [
+        "INSERT_SIBLING",
+        "INSERT_CHILD",
+        "SPLICE",
+        "SUBSTITUTE",
+        "OMIT",
+        "RESCIND",
+        "SUPERSEDE",
+        "COMMENCE",
+        "CORRIGENDUM",
+        "UNKNOWN"
+      ]
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "document_id",
+        "record_id",
+        "instrument_number",
+        "issuing_authority",
+        "publication_date",
+        "source_file_sha256",
+        "source_text_sha256"
+      ],
+      "properties": {
+        "document_id": {"type": "string", "minLength": 1},
+        "record_id": {"type": "string"},
+        "instrument_number": {"type": "string"},
+        "issuing_authority": {"type": "string"},
+        "publication_date": {"type": "string"},
+        "source_url": {"type": "string"},
+        "source_file_sha256": {"type": "string"},
+        "source_text_sha256": {"type": "string"}
+      }
+    },
+    "legal_time": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "commencement_date",
+        "applicability_start",
+        "applicability_end",
+        "retrospective",
+        "date_basis"
+      ],
+      "properties": {
+        "commencement_date": {"type": ["string", "null"]},
+        "applicability_start": {"type": ["string", "null"]},
+        "applicability_end": {"type": ["string", "null"]},
+        "retrospective": {"type": "boolean"},
+        "date_basis": {"type": "string"}
+      }
+    },
+    "system_time": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["observed_at", "compiled_at", "compiler_version"],
+      "properties": {
+        "observed_at": {"type": "string"},
+        "compiled_at": {"type": "string"},
+        "compiler_version": {"type": "string"}
+      }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["work_id", "component_id"],
+      "properties": {
+        "work_id": {"type": "string", "minLength": 1},
+        "component_id": {"type": "string", "minLength": 1},
+        "anchor_text": {"type": ["string", "null"]},
+        "anchor_hash": {"type": ["string", "null"]},
+        "anchor_occurrence": {"type": ["integer", "null"]}
+      }
+    },
+    "payload": {"type": "object"},
+    "evidence": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["source_span", "excerpt", "parser_trace"],
+      "properties": {
+        "source_span": {
+          "type": "object",
+          "required": ["start", "end", "text_hash"],
+          "additionalProperties": true,
+          "properties": {
+            "start": {"type": "integer"},
+            "end": {"type": "integer"},
+            "text_hash": {"type": "string"}
+          }
+        },
+        "excerpt": {"type": "string"},
+        "parser_trace": {
+          "type": "object",
+          "required": ["pattern_id", "confidence"],
+          "additionalProperties": true,
+          "properties": {
+            "pattern_id": {"type": "string"},
+            "confidence": {"type": "number"}
+          }
+        }
+      }
+    },
+    "validation": {
+      "type": "object",
+      "required": [
+        "target_resolved",
+        "anchor_resolved",
+        "date_resolved",
+        "source_span_verified",
+        "materializable"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "target_resolved": {"type": "boolean"},
+        "anchor_resolved": {"type": "boolean"},
+        "date_resolved": {"type": "boolean"},
+        "source_span_verified": {"type": "boolean"},
+        "materializable": {"type": "boolean"}
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": ["candidate", "validated", "needs_review", "rejected", "materialized"]
+    },
+    "review": {
+      "type": "object",
+      "required": ["required", "review_reasons", "reviewed_by", "reviewed_at"],
+      "additionalProperties": true,
+      "properties": {
+        "required": {"type": "boolean"},
+        "review_reasons": {"type": "array", "items": {"type": "string"}},
+        "reviewed_by": {"type": ["string", "null"]},
+        "reviewed_at": {"type": ["string", "null"]}
+      }
+    }
+  }
+}

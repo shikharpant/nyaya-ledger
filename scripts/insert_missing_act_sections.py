@@ -25,9 +25,9 @@ CORPUS_DIR = REPO_ROOT / "corpus/in/union/acts"
 ACT_MAP = {
     "cgst-act-2017": "central-goods-and-services-tax-act-2017.json",
     "igst-act-2017": "integrated-goods-and-services-tax-act-2017.json",
-    "customs-act-1962": "customs-act-1962.json",
+    "the-customs-act-1962": "customs-act-1962.json",
     "customs-tariff-act-1975": "customs-tariff-act-1975.json",
-    "central-excise-act-1944": "central-excise-act-1944.json",
+    "the-central-excise-act-1944": "central-excise-act-1944.json",
 }
 
 INSERT_AFTER = {

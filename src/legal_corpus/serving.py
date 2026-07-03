@@ -38,6 +38,28 @@ def _normalize_form_label(value: str) -> str:
     return label
 
 
+def _query_terms(value: str) -> list[str]:
+    return [term for term in re.findall(r"[a-z0-9]+", value.lower()) if len(term) > 2]
+
+
+def _provision_rank_bonus(row: dict[str, Any], query: str) -> float:
+    """Small lexical tie-breaker for provision-level semantic candidates."""
+    haystack = " ".join(
+        str(row.get(field, ""))
+        for field in ("title", "text", "canonical_id", "document_title")
+    ).lower()
+    normalized_query = " ".join(_query_terms(query))
+    bonus = 0.0
+    if normalized_query and normalized_query in haystack:
+        bonus += 0.05
+    terms = _query_terms(query)
+    if terms and all(term in haystack for term in terms):
+        bonus += 0.03
+    if row.get("provision_type") == "section" and row.get("document_type") == "act":
+        bonus += 0.03
+    return bonus
+
+
 class NyayaToolService:
     """Tool methods shared by REST and MCP frontends."""
 
@@ -47,8 +69,10 @@ class NyayaToolService:
         corpus_dir: Path | str = "corpus",
         search_index_path: Path | str = "derived/search/corpus_search.jsonl",
         graph_json_path: Path | str = "derived/graph/corpus_graph.json",
+        version_history_dir: Path | str = "derived/version_history/cgst-rules-2017",
         lancedb_path: Path | str = "derived/vector/lancedb",
         lancedb_table: str = "nyaya_ledger_nomic_v1_5",
+        provision_lancedb_table: str = "nyaya_provisions_v1",
         falkor_host: str = "127.0.0.1",
         falkor_port: int = 6379,
         falkor_graph: str = "nyaya_ledger",
@@ -58,8 +82,10 @@ class NyayaToolService:
         self.corpus_dir = Path(corpus_dir)
         self.search_index_path = Path(search_index_path)
         self.graph_json_path = Path(graph_json_path)
+        self.version_history_dir = Path(version_history_dir)
         self.lancedb_path = Path(lancedb_path)
         self.lancedb_table = lancedb_table
+        self.provision_lancedb_table = provision_lancedb_table
         self.falkor_host = falkor_host
         self.falkor_port = falkor_port
         self.falkor_graph = falkor_graph
@@ -75,6 +101,7 @@ class NyayaToolService:
         self._incoming: dict[str, list[dict[str, Any]]] | None = None
         self._falkor_graph: Any | None = None
         self._lance_table: Any | None = None
+        self._provision_lance_table: Any | None = None
 
     @classmethod
     def from_env(cls) -> "NyayaToolService":
@@ -84,6 +111,7 @@ class NyayaToolService:
             graph_json_path=os.getenv("NYAYA_GRAPH_JSON", "derived/graph/corpus_graph.json"),
             lancedb_path=os.getenv("NYAYA_LANCEDB_PATH", "derived/vector/lancedb"),
             lancedb_table=os.getenv("NYAYA_LANCEDB_TABLE", "nyaya_ledger_nomic_v1_5"),
+            provision_lancedb_table=os.getenv("NYAYA_PROVISION_LANCEDB_TABLE", "nyaya_provisions_v1"),
             falkor_host=os.getenv("FALKORDB_HOST", "127.0.0.1"),
             falkor_port=int(os.getenv("FALKORDB_PORT", "6379")),
             falkor_graph=os.getenv("FALKORDB_GRAPH", "nyaya_ledger"),
@@ -207,6 +235,63 @@ class NyayaToolService:
                 "results": self.lexical_search(query, limit=limit, document_type=document_type, role=role),
             }
 
+    def semantic_search_provision(
+        self,
+        query: str,
+        *,
+        limit: int = 10,
+        provision_type: str | None = None,
+        document_type: str | None = None,
+        fallback_lexical: bool = True,
+    ) -> dict[str, Any]:
+        """Semantic search over provision-level chunks (sections/rules/sub-rules/forms).
+
+        Unlike :meth:`semantic_search` (flat 128-token windows), this queries the
+        ``nyaya_provisions_v1`` LanceDB table whose chunks are aligned to legal
+        provisions. Each result carries the provision ``canonical_id``,
+        ``provision_type``, ``number`` and document-level metadata.
+        """
+        try:
+            vector = self._embed(query)
+            table = self._provision_lancedb_table()
+            rows = table.search(vector).limit(max(limit * 25, 50)).to_list()
+            results = []
+            for row in rows:
+                if provision_type and row.get("provision_type") != provision_type:
+                    continue
+                if document_type and row.get("document_type") != document_type:
+                    continue
+                score = 1.0 / (1.0 + float(row.get("_distance", 0.0)))
+                results.append(
+                    {
+                        "_rank_score": score + _provision_rank_bonus(row, query),
+                        "score": score,
+                        "distance": row.get("_distance", 0.0),
+                        "chunk_id": row.get("chunk_id", ""),
+                        "canonical_id": row.get("canonical_id", ""),
+                        "provision_type": row.get("provision_type", ""),
+                        "number": row.get("number", ""),
+                        "document_id": row.get("document_id", ""),
+                        "document_type": row.get("document_type", ""),
+                        "document_title": row.get("document_title", ""),
+                        "title": row.get("title", ""),
+                        "path": row.get("path", ""),
+                        "snippet": _clean_text(row.get("text", ""), 360),
+                    }
+                )
+            results.sort(key=lambda item: item.pop("_rank_score"), reverse=True)
+            results = results[:limit]
+            return {"mode": "semantic_provision", "query": query, "results": results}
+        except Exception as exc:
+            if not fallback_lexical:
+                raise
+            return {
+                "mode": "lexical_fallback",
+                "query": query,
+                "error": str(exc),
+                "results": self.lexical_search(query, limit=limit, document_type=document_type),
+            }
+
     def get_incoming_refs(self, canonical_id: str, *, limit: int = 50) -> dict[str, Any]:
         normalized = normalize_query_id(canonical_id)
         edges = self._incoming_edges(normalized, limit=limit)
@@ -281,13 +366,170 @@ class NyayaToolService:
                     forms[edge["target"]] = self._edge_payload(edge)
         return {"canonical_id": normalized, "forms": list(forms.values())[:limit]}
 
-    def compare_versions(self, canonical_id: str, from_date: str | None = None, to_date: str | None = None) -> dict[str, Any]:
+    def compare_versions(
+        self,
+        canonical_id: str,
+        from_date: str | None = None,
+        to_date: str | None = None,
+    ) -> dict[str, Any]:
+        from .version_compare import compare_component_versions
+
+        return compare_component_versions(
+            canonical_id,
+            from_date=from_date,
+            to_date=to_date,
+        )
+
+    def get_provision_as_of_date(
+        self,
+        canonical_id: str,
+        *,
+        date: str,
+        target_work: str | None = None,
+    ) -> dict[str, Any]:
+        """Return the exact provision text in force on *date*, with provenance
+        and the expanded amendment chain up to and including that date."""
+        from .version_reconstruct import reconstruct_component
+
+        result = reconstruct_component(
+            canonical_id,
+            date=date,
+            target_work=target_work,
+        )
+        version = result.get("version") or {}
+        component_id = result.get("component_id", normalize_query_id(canonical_id))
+
+        # Expand the amendment chain, filtered to amendments effective on or
+        # before the queried date — future amendments are not part of the law
+        # at that date and must not appear in a historical position-of-law query.
+        amendments: list[dict[str, Any]] = []
+        coverage = "complete"
+        coverage_gaps: list[dict[str, Any]] = []
+        warnings: list[str] = []
+        if result.get("status") == "ok":
+            chain_data = self.list_amendments(component_id, target_work=target_work)
+            amendments = [
+                a for a in chain_data.get("amendments", [])
+                if (a.get("effective_date") or "") <= date
+            ]
+            # Surface coverage/confidence from the comparison engine so callers
+            # know whether the position-of-law is exact or has materialization gaps.
+            try:
+                cmp = self.compare_versions(component_id, from_date=version.get("applicability_start") or version.get("valid_from"), to_date=date)
+                coverage = cmp.get("coverage", "complete")
+                coverage_gaps = cmp.get("coverage_gaps", [])
+                warnings = cmp.get("warnings", [])
+            except Exception:
+                pass
+
+        raw_status = result.get("status", "not_found")
+        # When reconstruction succeeded but coverage is incomplete, downgrade
+        # the public status so callers do not mistake an inexact position-of-law
+        # for a court-ready one.
+        if raw_status == "ok" and coverage != "complete":
+            effective_status = "ok_with_gaps"
+        else:
+            effective_status = raw_status
+
         return {
-            "canonical_id": normalize_query_id(canonical_id),
-            "from_date": from_date,
-            "to_date": to_date,
-            "status": "not_implemented",
-            "message": "Version comparison needs the amendment time-travel corpus to be materialized first.",
+            "status": effective_status,
+            "canonical_id": component_id,
+            "date": date,
+            "text": result.get("text", ""),
+            "version_id": version.get("version_id"),
+            "text_sha256": version.get("text_sha256"),
+            "applicability_start": version.get("applicability_start") or version.get("valid_from"),
+            "applicability_end": version.get("applicability_end") or version.get("valid_to"),
+            "event_chain": version.get("event_chain", []),
+            "source_basis": version.get("source_basis", {}),
+            "created_by_event_id": version.get("created_by_event_id"),
+            "amendments": amendments,
+            "coverage": coverage,
+            "coverage_gaps": coverage_gaps,
+            "warnings": warnings,
+        }
+
+    def _component_version_rows(
+        self,
+        canonical_id: str,
+        *,
+        target_work: str | None = None,
+    ) -> tuple[list[dict[str, Any]], str | None]:
+        """Read node_versions.jsonl rows for a component, resolving the correct version dir."""
+        from .version_compare import read_node_versions, resolve_version_dir
+
+        canonical = normalize_query_id(canonical_id)
+        resolved_dir, resolved_work = resolve_version_dir(canonical, target_work=target_work)
+        node_versions_path = resolved_dir / "node_versions.jsonl"
+        if not node_versions_path.exists():
+            return [], resolved_work
+        rows = [
+            row
+            for row in read_node_versions(node_versions_path)
+            if normalize_query_id(str(row.get("component_id") or "")) == canonical
+        ]
+        return rows, resolved_work
+
+    def list_amendments(
+        self,
+        canonical_id: str,
+        *,
+        target_work: str | None = None,
+    ) -> dict[str, Any]:
+        """Return the ordered amendment chain for a provision."""
+        from .version_compare import normalize_version_component_id
+
+        component_id = normalize_version_component_id(canonical_id)
+        rows, resolved_work = self._component_version_rows(component_id, target_work=target_work)
+        amendments: list[dict[str, Any]] = []
+        for row in sorted(rows, key=lambda r: r.get("applicability_start") or r.get("valid_from") or ""):
+            event_id = row.get("created_by_event_id")
+            if not event_id:
+                continue  # skip baseline-only versions
+            basis = row.get("source_basis", {})
+            amendments.append({
+                "event_id": event_id,
+                "operation": basis.get("operation", ""),
+                "effective_date": row.get("applicability_start") or row.get("valid_from"),
+                "source_document_id": basis.get("source_document_id", ""),
+                "source_record_id": basis.get("source_record_id", ""),
+                "source_span": basis.get("source_span", {}),
+            })
+        return {
+            "canonical_id": component_id,
+            "target_work": resolved_work,
+            "count": len(amendments),
+            "amendments": amendments,
+        }
+
+    def get_provision_timeline(
+        self,
+        canonical_id: str,
+        *,
+        target_work: str | None = None,
+    ) -> dict[str, Any]:
+        """Return all materialized versions of a provision, ordered by date."""
+        from .version_compare import normalize_version_component_id
+
+        component_id = normalize_version_component_id(canonical_id)
+        rows, resolved_work = self._component_version_rows(component_id, target_work=target_work)
+        versions: list[dict[str, Any]] = []
+        for row in sorted(rows, key=lambda r: r.get("applicability_start") or r.get("valid_from") or ""):
+            text = row.get("text", "")
+            versions.append({
+                "version_id": row.get("version_id"),
+                "applicability_start": row.get("applicability_start") or row.get("valid_from"),
+                "applicability_end": row.get("applicability_end") or row.get("valid_to"),
+                "text_sha256": row.get("text_sha256"),
+                "created_by_event_id": row.get("created_by_event_id"),
+                "event_chain": row.get("event_chain", []),
+                "snippet": _clean_text(text, 200),
+            })
+        return {
+            "canonical_id": component_id,
+            "target_work": resolved_work,
+            "count": len(versions),
+            "versions": versions,
         }
 
     def health(self) -> dict[str, Any]:
@@ -518,6 +760,15 @@ class NyayaToolService:
 
             self._lance_table = lancedb.connect(str(self.lancedb_path)).open_table(self.lancedb_table)
         return self._lance_table
+
+    def _provision_lancedb_table(self) -> Any:
+        if self._provision_lance_table is None:
+            import lancedb
+
+            self._provision_lance_table = lancedb.connect(str(self.lancedb_path)).open_table(
+                self.provision_lancedb_table
+            )
+        return self._provision_lance_table
 
     def _embed(self, query: str) -> list[float]:
         request = urllib.request.Request(
