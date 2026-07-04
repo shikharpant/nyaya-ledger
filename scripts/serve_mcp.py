@@ -149,6 +149,34 @@ def create_mcp_server(*, host: str = "127.0.0.1", port: int = 8090) -> FastMCP:
         result["resolved_canonical_id"] = canonical_id
         return result
 
+    @server.tool()
+    def get_form_structure(form_id: str) -> dict[str, Any]:
+        """Return the structural definition of a GST form (sections, fields, tables, columns).
+
+        Args:
+            form_id: Form identifier (e.g., 'gstr-1', 'gst-reg-01', 'gst-rfd-01')
+        """
+        from pathlib import Path
+        import json as _json
+
+        form_file = form_id.lower().strip()
+        structure_path = Path("derived/form_structure") / f"{form_file}.json"
+        if not structure_path.exists():
+            return {
+                "status": "not_found",
+                "form_id": form_id,
+                "message": f"No structure file found for '{form_id}'. Available: see derived/form_structure/",
+            }
+
+        with open(structure_path) as f:
+            structure = _json.load(f)
+
+        return {
+            "status": "ok",
+            "form_id": form_id,
+            "structure": structure,
+        }
+
     return server
 
 

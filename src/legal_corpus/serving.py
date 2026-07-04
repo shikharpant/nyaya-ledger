@@ -819,5 +819,20 @@ class NyayaToolService:
         embedding = payload["data"][0]["embedding"]
         return [float(value) for value in embedding]
 
+    def get_form_structure(self, form_id: str) -> dict[str, Any]:
+        """Return the structural definition of a GST form."""
+        from pathlib import Path
+        import json as _json
+
+        form_file = form_id.lower().strip()
+        structure_path = Path("derived/form_structure") / f"{form_file}.json"
+        if not structure_path.exists():
+            return {"status": "not_found", "form_id": form_id}
+
+        with open(structure_path) as f:
+            structure = _json.load(f)
+
+        return {"status": "ok", "form_id": form_id, "structure": structure}
+
 
 __all__ = ["NyayaToolService"]
