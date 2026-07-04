@@ -832,7 +832,29 @@ class NyayaToolService:
         with open(structure_path) as f:
             structure = _json.load(f)
 
-        return {"status": "ok", "form_id": form_id, "structure": structure}
+        source = structure.get("source", "")
+        has_sections = bool(structure.get("sections"))
+
+        if has_sections:
+            form_status = "complete"
+        elif source in ("category_stub",):
+            form_status = "category_stub"
+        elif source in ("sub_component",):
+            form_status = "sub_component"
+        elif structure.get("alias_of"):
+            form_status = "alias"
+        elif source in ("metadata_only",):
+            form_status = "placeholder"
+        else:
+            form_status = "placeholder"
+
+        return {
+            "status": "ok",
+            "form_id": form_id,
+            "structure": structure,
+            "form_status": form_status,
+            "has_sections": has_sections,
+        }
 
 
 __all__ = ["NyayaToolService"]
