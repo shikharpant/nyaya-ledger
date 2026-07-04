@@ -428,10 +428,20 @@ class NyayaToolService:
             ]
             # Surface coverage/confidence from the comparison engine so callers
             # know whether the position-of-law is exact or has materialization gaps.
+            # Filter to only gaps affecting THIS component — other sections' gaps
+            # in the same work should not affect this provision's coverage status.
             try:
                 cmp = self.compare_versions(component_id, from_date=version.get("applicability_start") or version.get("valid_from"), to_date=date)
-                coverage = cmp.get("coverage", "complete")
-                coverage_gaps = cmp.get("coverage_gaps", [])
+                all_gaps = cmp.get("coverage_gaps", [])
+                coverage_gaps = [
+                    g for g in all_gaps
+                    if component_id in str(g.get("target", {}).get("component_id", "")) or component_id in str(g.get("skip_reason", ""))
+                ]
+                if coverage_gaps:
+                    coverage = "incomplete"
+                    coverage_gaps = coverage_gaps
+                else:
+                    coverage = cmp.get("coverage", "complete")
                 warnings = cmp.get("warnings", [])
             except Exception:
                 pass
