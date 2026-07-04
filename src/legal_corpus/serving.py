@@ -389,6 +389,20 @@ class NyayaToolService:
     ) -> dict[str, Any]:
         """Return the exact provision text in force on *date*, with provenance
         and the expanded amendment chain up to and including that date."""
+        from datetime import datetime
+
+        # Validate date format before reconstruction
+        try:
+            datetime.strptime(date, "%Y-%m-%d")
+        except (ValueError, TypeError):
+            return {
+                "status": "invalid_date",
+                "canonical_id": normalize_query_id(canonical_id),
+                "date": date,
+                "text": "",
+                "message": f"Invalid date '{date}'. Expected YYYY-MM-DD format.",
+            }
+
         from .version_reconstruct import reconstruct_component
 
         result = reconstruct_component(
