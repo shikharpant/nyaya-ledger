@@ -483,6 +483,19 @@ class NyayaToolService:
         from .version_compare import read_node_versions, resolve_version_dir
 
         canonical = normalize_query_id(canonical_id)
+
+        # Forms have their own version-history directory
+        if canonical.startswith("/in/union/forms/"):
+            forms_dir = self.version_history_dir.parent / "forms"
+            node_versions_path = forms_dir / "node_versions.jsonl"
+            if node_versions_path.exists():
+                rows = [
+                    row
+                    for row in read_node_versions(node_versions_path)
+                    if normalize_query_id(str(row.get("component_id") or "")) == canonical
+                ]
+                return rows, "/in/union/forms"
+
         resolved_dir, resolved_work = resolve_version_dir(canonical, target_work=target_work)
         node_versions_path = resolved_dir / "node_versions.jsonl"
         if not node_versions_path.exists():
