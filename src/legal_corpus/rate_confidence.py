@@ -470,10 +470,25 @@ def generate_adjudication_report(
     """Generate a full adjudication report from a reconciliation report.
 
     Returns a dict with:
-        - summary: {total, matched, mismatched, materializer_errors, checkpoint_errors, cbic_discrepancies, ambiguous}
+        - summary: {total, matched, mismatched, materializer_errors,
+                    checkpoint_errors, cbic_discrepancies, ambiguous,
+                    match_rate, confidence_match_rate, confidence_score}
+        - schedules: {sid: {total, matched, confidence_score}}
         - entries: list of per-entry adjudication results
+
+    ``summary.confidence_score`` is a weighted average (0.0-1.0) of the
+    confidence of every entry counted in ``summary.total``: matched entries
+    are scored via :func:`score_entry_confidence` and mismatched entries use
+    the per-entry confidence from :func:`adjudicate_mismatch_multi`.
     """
     source_index = _build_multi_source_index(events_jsonl_path, corpus_dir)
+
+    # Matched entry buckets (high confidence) and the buckets that count
+    # toward a schedule's entry total but are adjudicated as mismatches.
+    matched_buckets = ("exact_match", "format_only_match", "omitted_match", "cp_omitted_mat_missing")
+    mismatch_buckets = ("description_mismatch", "tariff_mismatch",
+                        "cp_omitted_mat_active", "mat_omitted_cp_active",
+                        "missing_in_materialized", "missing_in_checkpoint")
 
     summary = {
         "total": 0,
@@ -485,19 +500,31 @@ def generate_adjudication_report(
     }
 
     entries: list[dict[str, Any]] = []
+    schedules_out: dict[str, dict[str, Any]] = {}
+
+    # Running confidence numerator across all schedules.
+    confidence_sum = 0.0
 
     for sid in sorted(reconciliation_report.get("schedules", {}).keys()):
         sched_report = reconciliation_report["schedules"][sid]
         ec = sched_report.get("entry_counts", {})
 
-        for bucket in ("exact_match", "format_only_match", "omitted_match", "cp_omitted_mat_missing"):
-            summary["matched"] += ec.get(bucket, 0)
-            summary["total"] += ec.get(bucket, 0)
+        sched_total = 0
+        sched_matched = 0
+        sched_conf_sum = 0.0
 
-        for bucket in ("description_mismatch", "tariff_mismatch",
-                       "cp_omitted_mat_active", "mat_omitted_cp_active",
-                       "missing_in_materialized", "missing_in_checkpoint"):
-            summary["total"] += ec.get(bucket, 0)
+        for bucket in matched_buckets:
+            cnt = ec.get(bucket, 0)
+            summary["matched"] += cnt
+            summary["total"] += cnt
+            sched_matched += cnt
+            sched_total += cnt
+            sched_conf_sum += cnt * score_entry_confidence(bucket)
+
+        for bucket in mismatch_buckets:
+            cnt = ec.get(bucket, 0)
+            summary["total"] += cnt
+            sched_total += cnt
 
         for mismatch in sched_report.get("mismatches", []):
             sno = str(mismatch.get("sno", "")).rstrip(".").upper()
@@ -519,7 +546,20 @@ def generate_adjudication_report(
             else:
                 summary["ambiguous"] += 1
 
+            # Only entries whose issue is counted in `total` contribute to the
+            # confidence average, keeping the numerator/denominator consistent.
+            # (e.g. concordance_traced entries are excluded from both.)
+            if mismatch.get("issue") in mismatch_buckets:
+                sched_conf_sum += result.get("confidence", 0.0)
+
             entries.append(result)
+
+        schedules_out[sid] = {
+            "total": sched_total,
+            "matched": sched_matched,
+            "confidence_score": round(sched_conf_sum / max(sched_total, 1), 4),
+        }
+        confidence_sum += sched_conf_sum
 
     summary["mismatched"] = summary["total"] - summary["matched"]
     summary["match_rate"] = round(summary["matched"] / max(summary["total"], 1) * 100, 1)
@@ -527,8 +567,9 @@ def generate_adjudication_report(
         (summary["matched"] + summary["checkpoint_errors"] + summary["cbic_discrepancies"]) /
         max(summary["total"], 1) * 100, 1
     )
+    summary["confidence_score"] = round(confidence_sum / max(summary["total"], 1), 4)
 
-    report = {"summary": summary, "entries": entries}
+    report = {"summary": summary, "schedules": schedules_out, "entries": entries}
 
     if output_path:
         output_path = Path(output_path)

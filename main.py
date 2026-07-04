@@ -3365,6 +3365,7 @@ def main():
         print(f"Adjudication: {args.target} @ {args.checkpoint_date}")
         print(f"  Total:          {s['total']}")
         print(f"  Matched:        {s['matched']} ({s['match_rate']}%)")
+        print(f"  Confidence:     {s.get('confidence_score', 0.0)}")
         print(f"  Conf match:     {s['confidence_match_rate']}% (incl CP errors + CBIC discrepancies)")
         print(f"  Mat errors:     {s['materializer_errors']}")
         print(f"  CBIC discr:     {s['cbic_discrepancies']}")
