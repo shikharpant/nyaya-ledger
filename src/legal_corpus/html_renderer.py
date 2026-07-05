@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import html
 import json
 import re
@@ -79,7 +80,15 @@ a {
 
 def _slug(canonical_id: str) -> str:
     value = canonical_id.strip("/").replace("/", "__")
-    return re.sub(r"[^A-Za-z0-9_.-]+", "_", value) or "index"
+    value = re.sub(r"[^A-Za-z0-9_.-]+", "_", value) or "index"
+    # Linux filesystems cap a single path component at NAME_MAX (typically 255
+    # bytes). Long canonical IDs (e.g. verbose circular slugs) easily exceed
+    # this, so truncate the readable prefix and append a short deterministic
+    # hash suffix to preserve uniqueness. Allow room for the ``.html`` suffix.
+    if len(value) > 200:
+        digest = hashlib.sha256(canonical_id.encode("utf-8")).hexdigest()[:10]
+        value = value[:189] + "-" + digest
+    return value
 
 
 def _escape(value: str) -> str:

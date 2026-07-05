@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
-"""LLM fallback compiler pass for the 62 service-rate UNKNOWN events.
+"""Build the service-rate event stream, with optional LLM fallback.
 
-Targets ``target_notification == "11/2017-ct-rate"`` clauses left as
-``RATE_UNKNOWN`` by the deterministic compiler, and asks a local
-OpenAI-compatible LLM (the Grug-35B model) to classify each clause into a
-structured amendment event.
+Targets ``target_notification == "11/2017-ct-rate"``.  The output is a
+complete, materializer-compatible event stream for the service notification,
+not just the LLM-classified fallback rows.  Clauses left as ``RATE_UNKNOWN`` by
+the deterministic compiler are optionally classified through the local
+OpenAI-compatible LLM and overlaid into that stream.
 
 Reuses the prompt/parsing/validation helpers from
-``src.legal_corpus.rate_llm_compiler`` so the output schema is identical to
-that of the main pipeline, but overrides the model name, generation params
-(temperature 0, max_tokens 500) and uses a dedicated cache/output pair so the
-main ``rate_amendment_events.jsonl`` and ``llm_events.*`` artefacts are never
-touched.
+``src.legal_corpus.rate_llm_compiler`` so classified rows use the same
+``RATE_*`` schema as the main pipeline, but overrides the model name,
+generation params (temperature 0, max_tokens 500) and uses a dedicated
+cache/output pair so the main ``rate_amendment_events.jsonl`` and
+``llm_events.*`` artefacts are never touched.
 """
 
 import json
@@ -124,19 +125,42 @@ def _save_cache(cache: dict) -> None:
         json.dump(cache, fh, ensure_ascii=False, indent=2)
 
 
-def main() -> int:
-    unknown_events = []
+def _load_main_events() -> list[dict]:
+    events: list[dict] = []
     with open(EVENTS_JSONL, encoding="utf-8") as fh:
         for line in fh:
             line = line.strip()
-            if not line:
-                continue
-            evt = json.loads(line)
-            if (
-                evt.get("operation") == "RATE_UNKNOWN"
-                and evt.get("target_notification") == TARGET_NOTIFICATION
-            ):
-                unknown_events.append(evt)
+            if line:
+                events.append(json.loads(line))
+    return events
+
+
+def _build_service_stream(main_events: list[dict], resolved_events: list[dict]) -> list[dict]:
+    """Overlay resolved UNKNOWN rows into the complete 11/2017 service stream."""
+    resolved_by_id = {
+        evt.get("event_id"): evt
+        for evt in resolved_events
+        if evt.get("event_id")
+    }
+    service_events: list[dict] = []
+    for evt in main_events:
+        if evt.get("target_notification") != TARGET_NOTIFICATION:
+            continue
+        event_id = evt.get("event_id")
+        service_events.append(resolved_by_id.get(event_id, evt))
+    return service_events
+
+
+def main() -> int:
+    main_events = _load_main_events()
+    unknown_events = [
+        evt
+        for evt in main_events
+        if (
+            evt.get("operation") == "RATE_UNKNOWN"
+            and evt.get("target_notification") == TARGET_NOTIFICATION
+        )
+    ]
 
     print(f"Loaded {len(unknown_events)} UNKNOWN events for {TARGET_NOTIFICATION}")
     cache = _load_cache()
@@ -172,9 +196,11 @@ def main() -> int:
         if source == "llm":
             time.sleep(0.2)
 
+    service_events = _build_service_stream(main_events, resolved_events)
+
     OUTPUT_JSONL.parent.mkdir(parents=True, exist_ok=True)
     with open(OUTPUT_JSONL, "w", encoding="utf-8") as fh:
-        for evt in resolved_events:
+        for evt in service_events:
             fh.write(json.dumps(evt, ensure_ascii=False) + "\n")
 
     resolved = sum(1 for e in resolved_events if e.get("operation") != "RATE_UNKNOWN")
@@ -188,7 +214,7 @@ def main() -> int:
     print("statuses:")
     for st, cnt in Counter(e.get("status") for e in resolved_events).most_common():
         print(f"  {st}: {cnt}")
-    print(f"\nwrote {OUTPUT_JSONL}")
+    print(f"\nwrote {len(service_events)} service events to {OUTPUT_JSONL}")
     return 0
 
 

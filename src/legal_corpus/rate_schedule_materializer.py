@@ -931,6 +931,22 @@ BASE_JSON_MAP: dict[str, str] = {
 CESS_EVENTS_JSONL = "derived/version_history/rate-schedules/cess_amendment_events.jsonl"
 
 
+def _checkpoint_filter_date(checkpoint_date: str | None) -> str | None:
+    """Return the ISO date used for event filtering.
+
+    Service checkpoint artifacts are named with a ``svc_`` prefix to avoid
+    colliding with goods-rate checkpoints, but their internal effective date is
+    still the trailing ``YYYY-MM-DD``.  Event filtering must use that ISO date;
+    otherwise lexical comparison treats every numeric event date as earlier
+    than ``svc_...`` and replays future service amendments.
+    """
+    if not checkpoint_date:
+        return None
+    text = str(checkpoint_date)
+    match = re.fullmatch(r"svc_(\d{4}-\d{2}-\d{2})", text)
+    return match.group(1) if match else text
+
+
 def _resolve_base_for_date(
     target_notification: str,
     checkpoint_date: str | None,
@@ -978,9 +994,11 @@ def materialize_schedule(
     Returns:
         Snapshot dict with the materialized schedule state.
     """
+    filter_date = _checkpoint_filter_date(checkpoint_date)
+
     # Check for supersession
     active_notif, active_base, event_target = _resolve_base_for_date(
-        target_notification, checkpoint_date, base_json_path
+        target_notification, filter_date, base_json_path
     )
 
     # Compensation Cess targets read their amendment events from a separate
@@ -1003,7 +1021,7 @@ def materialize_schedule(
             # Only apply events targeting the active notification
             if evt_target != event_target:
                 continue
-            if checkpoint_date and evt.get("effective_date", "") > checkpoint_date:
+            if filter_date and evt.get("effective_date", "") > filter_date:
                 continue
             # Skip supersession events themselves
             if evt.get("operation") == "RATE_SUPERSEDE":
