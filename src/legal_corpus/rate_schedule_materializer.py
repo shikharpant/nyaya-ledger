@@ -749,17 +749,27 @@ class RateMaterializer:
             end = idx + len(words)
             while end < len(desc) and desc[end] in " ,":
                 end += 1
-            entry.description = desc[:idx].rstrip() + desc[end:]
+            entry.description = self._join_omit(desc[:idx].rstrip(), desc[end:])
         else:
             span = self._fuzzy_find_in_desc(desc, words)
             if span:
                 end = span[1]
                 while end < len(desc) and desc[end] in " ,":
                     end += 1
-                entry.description = desc[:span[0]].rstrip() + desc[end:]
+                entry.description = self._join_omit(desc[:span[0]].rstrip(), desc[end:])
             else:
                 raise ValueError(f"Words '{words}' not found in description of S.No. {sno}")
         return True
+
+    @staticmethod
+    def _join_omit(left: str, right: str) -> str:
+        # Removing the omitted span can leave two word characters directly
+        # adjacent (e.g. "services," + " without" → "serviceswithout" when the
+        # comma and surrounding spaces are consumed). Insert a single space so
+        # distinct words are not merged.
+        if left and right and left[-1].isalnum() and right[0].isalnum():
+            return left + " " + right
+        return left + right
 
     def _op_rate_substitute_words(self, evt: dict) -> bool:
         sched = self._get_schedule(evt)
