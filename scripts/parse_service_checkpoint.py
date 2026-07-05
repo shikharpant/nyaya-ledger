@@ -104,12 +104,12 @@ _cols: dict[str, float] = {"sno": X_SNO_MAX, "tariff": X_TARIFF_MAX, "desc": X_D
 
 def _classify(word: dict) -> str:
     x0 = word["x0"]
+    text = word["text"]
     # S.No: check both position AND content (handles [2A at x0=81)
     if x0 < _cols["sno"] + 5:
-        if _clean_sno(word["text"]):
+        if _clean_sno(text):
             return "sno"
-        if x0 < _cols["sno"]:
-            return "sno"  # positional fallback for plain numbers
+    # Everything else by position
     if x0 < _cols["tariff"]:
         return "tariff"
     if x0 < _cols["desc"]:
@@ -200,6 +200,88 @@ def _clean_tariff(parts: list[str]) -> str:
         prefix = "Heading" if deduped[0].startswith("Heading") else ("Chapter" if deduped[0].startswith("Chapter") else "Section")
         return f"{prefix} {' or '.join(nums)}"
     return result.strip()
+
+
+def _clean_category_text(text: str) -> str:
+    """Clean up category heading text from PDF extraction artifacts.
+    
+    Removes footnote references and normalizes whitespace.
+    Split words (e.g., "Constructio n") are left for fuzzy matching.
+    """
+    # Remove footnote markers like [***]56, [***]76, [***]144
+    text = re.sub(r"\[\*+\]\d*", "", text)
+    # Remove standalone footnote numbers in brackets
+    text = re.sub(r"\[\d+\]", "", text)
+    # Clean up whitespace
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
+
+
+def _process_tariff_words(entry: dict, words: list[str]) -> None:
+    """Process tariff-column words for one row with parenthesis tracking.
+    
+    Mutates entry in-place:
+    - Parenthesized expressions (category headings) → entry["category_prefix"]
+    - Tariff-like tokens (Chapter/Section/Heading + numbers) → entry["tariff_item"]
+    - Description overflow → entry["description"]
+    """
+    for word in words:
+        if entry["in_parens"]:
+            entry["parens_buffer"].append(word)
+            if ")" in word:
+                # Close the parenthesized expression
+                entry["in_parens"] = False
+                full = " ".join(entry["parens_buffer"])
+                full = re.sub(r"\s+", " ", full).strip()
+                entry["parens_buffer"] = []
+                # Clean up the text
+                full = _clean_category_text(full)
+                # Check if it's a category heading
+                normalized = full.replace(" ", "")
+                if re.search(r"servic|activit|ervic|ctivit", normalized, re.I) and len(full) > 10:
+                    entry["category_prefix"].append(full)
+                else:
+                    # Not a category — treat as description
+                    entry["description"].append(full)
+        elif word.startswith("(") and ")" not in word:
+            # Start of a multi-word parenthesized expression
+            entry["in_parens"] = True
+            entry["parens_buffer"] = [word]
+        elif word.startswith("(") and word.endswith(")"):
+            # Single-word parenthesized expression
+            normalized = word.replace(" ", "")
+            if re.search(r"servic|activit|ervic|ctivit", normalized, re.I) and len(word) > 10:
+                entry["category_prefix"].append(word)
+            else:
+                entry["description"].append(word)
+        elif re.match(r"^(Chapter|Section|Heading)$", word, re.I):
+            # Tariff keyword — will be paired with number on next iteration
+            entry["tariff_item"].append(word)
+        elif re.match(r"^\d{4}$", word):
+            # 4-digit heading number
+            # Pair with preceding "Heading" keyword if present
+            if entry["tariff_item"] and entry["tariff_item"][-1].lower() == "heading":
+                entry["tariff_item"][-1] = f"Heading {word}"
+            elif entry["tariff_item"] and entry["tariff_item"][-1].startswith("Heading"):
+                # Already has a heading, skip duplicate
+                pass
+            else:
+                entry["tariff_item"].append(f"Heading {word}")
+        elif re.match(r"^\d{2}$", word) and not entry["tariff_item"]:
+            # 2-digit chapter number at start of tariff
+            if entry["tariff_item"] and entry["tariff_item"][-1].lower() == "chapter":
+                entry["tariff_item"][-1] = f"Chapter {word}"
+            else:
+                entry["tariff_item"].append(f"Chapter {word}")
+        elif re.match(r"^\d+$", word) and entry["tariff_item"] and entry["tariff_item"][-1].lower() in ("section", "chapter"):
+            # Number following Section/Chapter keyword
+            entry["tariff_item"][-1] = f"{entry['tariff_item'][-1].capitalize()} {word}"
+        else:
+            # Description overflow or noise
+            # Skip "or" tokens
+            if word.lower() != "or" and len(word) > 1:
+                entry["description"].append(word)
+
 
 
 def parse_service_rate_pdf(pdf_path: str | Path, max_page: int = 50) -> dict[str, Any]:
@@ -303,17 +385,14 @@ def parse_service_rate_pdf(pdf_path: str | Path, max_page: int = 50) -> dict[str
                             "tariff_item": [],
                             "description": [],
                             "category_prefix": [],
+                            "in_parens": False,
+                            "parens_buffer": [],
                             "rate": "",
                             "is_omitted": False,
                         }
                         entry_order.append(current_sno)
-                    # Process current row columns
-                    for w in tariff_words:
-                        t = w["text"]
-                        if _CATEGORY_RE.match(t):
-                            entries[current_sno]["category_prefix"].append(t)
-                        else:
-                            entries[current_sno]["tariff_item"].append(t)
+                    # Process tariff words with parenthesis tracking
+                    _process_tariff_words(entries[current_sno], [w["text"] for w in tariff_words])
                     for w in desc_words:
                         entries[current_sno]["description"].append(w["text"])
                     for w in rate_words:
@@ -323,14 +402,7 @@ def parse_service_rate_pdf(pdf_path: str | Path, max_page: int = 50) -> dict[str
 
                 elif current_sno and current_sno in entries:
                     # Continuation row
-                    for w in tariff_words:
-                        t = w["text"]
-                        if _CATEGORY_RE.match(t):
-                            entries[current_sno]["category_prefix"].append(t)
-                        elif re.match(r"^(\d{2,4}|Chapter|Section|Heading|or\b)", t, re.I):
-                            entries[current_sno]["tariff_item"].append(t)
-                        else:
-                            entries[current_sno]["description"].append(t)
+                    _process_tariff_words(entries[current_sno], [w["text"] for w in tariff_words])
                     for w in desc_words:
                         entries[current_sno]["description"].append(w["text"])
                     for w in rate_words:
