@@ -60,6 +60,38 @@ def _join_rate_into_desc(description: str, rate: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
+# Sub-item marker like "(iii)" or "(a)" — used to detect when a leaked
+# rate+condition run is followed by more sibling items that must survive.
+_ITEM_MARKER_RE = re.compile(r"\(\s*(?:[ivxlc]+|[a-z])\s*\)", re.I)
+_LEAKED_RATE_COND_RE = re.compile(r"\s+\d+\.?\d*\s+(?:Provided|None|Nil)\b", re.I)
+_TRAILING_RATE_RE = re.compile(r"\s+\d+\.?\d*$")
+
+
+def _clean_leaked_rate_condition(text: str) -> str:
+    """Peel rate/condition text that leaked out of the PDF table columns.
+
+    Amendment ``new_text`` often concatenates the column-4 rate and column-5
+    condition into the description. We peel a *genuinely trailing*
+    ``" <rate> Provided/None/Nil ..."`` run, but never across a subsequent
+    sub-item marker such as ``(iii)`` or ``(a)`` — otherwise sibling items
+    packed into the same new_text would be destroyed (cf. 11/2017 S.No 10
+    item (ii) wiping item (iii), and S.No 7 item (i) wiping items
+    (ia)/(iii)-(vi)). A bare trailing rate (``" 2.5"``, ``" 6"``) is always
+    peeled.
+    """
+    if not text:
+        return text
+    text = _TRAILING_RATE_RE.sub("", text)
+    m = _LEAKED_RATE_COND_RE.search(text)
+    if not m:
+        return text.strip()
+    # If a sub-item marker follows the leaked run, the condition is NOT the
+    # trailing tail — keep everything so the later items survive intact.
+    if _ITEM_MARKER_RE.search(text[m.end():]):
+        return text.strip()
+    return text[:m.start()].rstrip()
+
+
 @dataclass
 class ScheduleEntry:
     sno: str
@@ -609,10 +641,9 @@ class RateMaterializer:
             if not entry:
                 raise ValueError(f"S.No. {sno} not found")
 
-        # Strip trailing rate + condition text that leaked from the PDF table.
-        cleaned = re.sub(r'\s+\d+\.?\d*\s+(?:Provided|None|Nil)\b.*$', '', new_text, flags=re.I | re.DOTALL)
-        # Also strip bare trailing rate like " 2.5" or " 6"
-        cleaned = re.sub(r'\s+\d+\.?\d*$', '', cleaned)
+        # Peel leaked rate+condition text, but never across sibling item
+        # markers packed into the same new_text (cf. S.No 7/10 item loss).
+        cleaned = _clean_leaked_rate_condition(new_text)
         if cleaned.strip():
             new_text = cleaned
 
