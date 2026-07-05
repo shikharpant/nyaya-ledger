@@ -4,12 +4,17 @@
 from __future__ import annotations
 
 import argparse
+import asyncio
 import os
+import queue
 import sys
+import threading
 from pathlib import Path
 from typing import Any
 
+from mcp import types
 from mcp.server.fastmcp import FastMCP
+from mcp.shared.message import SessionMessage
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
@@ -19,6 +24,7 @@ from src.legal_corpus.serving import NyayaToolService  # noqa: E402
 
 
 _SERVICE: NyayaToolService | None = None
+_STDIN_CLOSED = object()
 
 
 def service() -> NyayaToolService:
@@ -31,6 +37,94 @@ def service() -> NyayaToolService:
 def _optional(value: str) -> str | None:
     clean = value.strip()
     return clean or None
+
+
+class _ThreadedStdinReceiveStream:
+    """Receive MCP JSON-RPC messages from stdin without AnyIO file threads.
+
+    The installed AnyIO/Python stack can hang while reading process stdin via
+    AnyIO's thread-backed file wrapper. A plain daemon thread can read stdin
+    reliably; this stream exposes those messages through the async iterator
+    protocol expected by the MCP session layer.
+    """
+
+    def __init__(self, messages: "queue.Queue[SessionMessage | Exception | object]") -> None:
+        self._messages = messages
+        self._closed = False
+
+    async def __aenter__(self) -> "_ThreadedStdinReceiveStream":
+        return self
+
+    async def __aexit__(self, *_exc: object) -> None:
+        await self.aclose()
+
+    def __aiter__(self) -> "_ThreadedStdinReceiveStream":
+        return self
+
+    async def __anext__(self) -> SessionMessage | Exception:
+        while True:
+            try:
+                message = self._messages.get_nowait()
+                break
+            except queue.Empty:
+                await asyncio.sleep(0.005)
+
+        if message is _STDIN_CLOSED:
+            raise StopAsyncIteration
+        return message  # type: ignore[return-value]
+
+    async def aclose(self) -> None:
+        if not self._closed:
+            self._closed = True
+            self._messages.put(_STDIN_CLOSED)
+
+
+class _StdoutWriteStream:
+    """Write MCP JSON-RPC messages as newline-delimited stdio responses."""
+
+    def __init__(self) -> None:
+        self._closed = False
+        self._lock = asyncio.Lock()
+
+    async def __aenter__(self) -> "_StdoutWriteStream":
+        return self
+
+    async def __aexit__(self, *_exc: object) -> None:
+        await self.aclose()
+
+    async def send(self, session_message: SessionMessage) -> None:
+        if self._closed:
+            return
+
+        payload = session_message.message.model_dump_json(by_alias=True, exclude_none=True)
+        async with self._lock:
+            sys.stdout.write(payload + "\n")
+            sys.stdout.flush()
+
+    async def aclose(self) -> None:
+        self._closed = True
+
+
+async def _run_threaded_stdio(server: FastMCP) -> None:
+    messages: "queue.Queue[SessionMessage | Exception | object]" = queue.Queue()
+
+    def read_stdin() -> None:
+        try:
+            for line in sys.stdin:
+                try:
+                    message = types.JSONRPCMessage.model_validate_json(line)
+                    messages.put(SessionMessage(message))
+                except Exception as exc:  # pragma: no cover - defensive protocol error path
+                    messages.put(exc)
+        finally:
+            messages.put(_STDIN_CLOSED)
+
+    threading.Thread(target=read_stdin, name="nyaya-mcp-stdio-reader", daemon=True).start()
+    await server._mcp_server.run(  # noqa: SLF001 - FastMCP has no public transport injection API.
+        _ThreadedStdinReceiveStream(messages),
+        _StdoutWriteStream(),
+        server._mcp_server.create_initialization_options(),  # noqa: SLF001
+    )
 
 
 def create_mcp_server(*, host: str = "127.0.0.1", port: int = 8090) -> FastMCP:
@@ -201,6 +295,106 @@ def create_mcp_server(*, host: str = "127.0.0.1", port: int = 8090) -> FastMCP:
 mcp = create_mcp_server()
 
 
+def _run_simple_stdio(server: FastMCP) -> None:
+    """Minimal stdio JSON-RPC loop that bypasses FastMCP's session layer.
+
+    Reads newline-delimited JSON-RPC from stdin, dispatches to the FastMCP
+    tool manager, and writes responses to stdout. Avoids AnyIO/threading
+    hangs in the default transport.
+    """
+    import json
+    import traceback
+
+    mcp_server = server._mcp_server  # noqa: SLF001
+    tool_manager = server._tool_manager  # noqa: SLF001
+    initialized = False
+
+    for line in sys.stdin:
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            msg = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+
+        method = msg.get("method", "")
+        msg_id = msg.get("id")
+        params = msg.get("params", {})
+
+        if method == "initialize":
+            response = {
+                "jsonrpc": "2.0",
+                "id": msg_id,
+                "result": {
+                    "protocolVersion": "2024-11-05",
+                    "capabilities": {
+                        "tools": {"listChanged": False},
+                        "resources": {"subscribe": False, "listChanged": False},
+                        "prompts": {"listChanged": False},
+                    },
+                    "serverInfo": {"name": "nyaya-ledger", "version": "1.26.0"},
+                    "instructions": "Tools for querying the Nyaya Ledger Indian legal corpus.",
+                },
+            }
+            sys.stdout.write(json.dumps(response) + "\n")
+            sys.stdout.flush()
+            initialized = True
+
+        elif method == "notifications/initialized":
+            pass  # notification, no response
+
+        elif method == "tools/list":
+            tools = []
+            for tool in server._tool_manager.list_tools():  # noqa: SLF001
+                # FastMCP Tool is a pydantic model — extract only JSON-serializable fields
+                tools.append({
+                    "name": tool.name,
+                    "description": tool.description or "",
+                    "inputSchema": tool.parameters,
+                })
+            response = {"jsonrpc": "2.0", "id": msg_id, "result": {"tools": tools}}
+            sys.stdout.write(json.dumps(response) + "\n")
+            sys.stdout.flush()
+
+        elif method == "tools/call":
+            tool_name = params.get("name", "")
+            arguments = params.get("arguments", {})
+            try:
+                # Call the underlying function directly to avoid asyncio issues
+                tool_obj = None
+                for t in server._tool_manager.list_tools():  # noqa: SLF001
+                    if t.name == tool_name:
+                        tool_obj = t
+                        break
+                if tool_obj is None:
+                    response = {"jsonrpc": "2.0", "id": msg_id,
+                                "error": {"code": -32601, "message": f"Tool '{tool_name}' not found"}}
+                else:
+                    result = tool_obj.fn(**arguments)
+                    response = {
+                        "jsonrpc": "2.0",
+                        "id": msg_id,
+                        "result": {
+                            "content": [{"type": "text", "text": json.dumps(result, default=str, ensure_ascii=False)}]
+                        },
+                    }
+            except Exception as exc:
+                traceback.print_exc(file=sys.stderr)
+                response = {
+                    "jsonrpc": "2.0",
+                    "id": msg_id,
+                    "error": {"code": -32603, "message": str(exc)},
+                }
+            sys.stdout.write(json.dumps(response, default=str, ensure_ascii=False) + "\n")
+            sys.stdout.flush()
+
+        elif method == "ping":
+            response = {"jsonrpc": "2.0", "id": msg_id, "result": {}}
+            sys.stdout.write(json.dumps(response) + "\n")
+            sys.stdout.flush()
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -213,7 +407,10 @@ def main() -> int:
     args = parser.parse_args()
 
     server = create_mcp_server(host=args.host, port=args.port)
-    server.run(transport=args.transport)
+    if args.transport == "stdio":
+        _run_simple_stdio(server)
+    else:
+        server.run(transport=args.transport)
     return 0
 
 
