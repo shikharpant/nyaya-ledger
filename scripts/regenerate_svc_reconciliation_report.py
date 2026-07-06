@@ -13,22 +13,21 @@ It validates VAL-LIVE-SVC-001:
 """
 import json
 import sys
+import argparse
 from datetime import datetime, timezone
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
+from legal_corpus.rate_confidence import generate_adjudication_report  # noqa: E402
 from legal_corpus.rate_schedule_materializer import materialize_schedule  # noqa: E402
 from legal_corpus.rate_reconciliation import reconcile_schedule  # noqa: E402
-
-RATE_DIR = PROJECT_ROOT / "derived" / "version_history" / "rate-schedules"
-BASE = RATE_DIR / "base_11-2017-ct-rate.json"
-EVENTS = RATE_DIR / "llm_svc_events.jsonl"
-CP_DIR = RATE_DIR / "checkpoints"
-OUTPUT = RATE_DIR / "reconciliation_report_svc.json"
-
-SERVICE_DATES = ["2019-04-01", "2024-10-24", "2025-03-31"]
+from legal_corpus.service_checkpoint_inputs import (  # noqa: E402
+    RUNTIME_RATE_DIR,
+    SERVICE_DATES,
+    resolve_service_rate_inputs,
+)
 
 
 def sha256(path: Path) -> str:
@@ -40,10 +39,40 @@ def sha256(path: Path) -> str:
     return h.hexdigest()
 
 
-def run_checkpoint(date: str) -> dict:
-    cp_file = CP_DIR / f"checkpoint_svc_{date}.json"
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Regenerate service checkpoint reconciliation/adjudication reports."
+    )
+    parser.add_argument(
+        "--rate-dir",
+        default=None,
+        help=(
+            "Input rate-schedule directory. Defaults to derived/ if complete, "
+            "otherwise the tracked service checkpoint fixture."
+        ),
+    )
+    parser.add_argument(
+        "--prefer-fixture",
+        action="store_true",
+        help="Use the tracked fixture even when ignored derived inputs exist.",
+    )
+    parser.add_argument(
+        "--output-dir",
+        default=str(RUNTIME_RATE_DIR),
+        help="Directory for regenerated report artifacts.",
+    )
+    parser.add_argument(
+        "--reconciliation-output",
+        default=None,
+        help="Path for reconciliation_report_svc.json.",
+    )
+    return parser.parse_args(argv)
+
+
+def run_checkpoint(date: str, inputs) -> dict:
+    cp_file = inputs.checkpoint_dir / f"checkpoint_svc_{date}.json"
     snap = materialize_schedule(
-        str(BASE), str(EVENTS), "11/2017-ct-rate",
+        str(inputs.base), str(inputs.events), "11/2017-ct-rate",
         checkpoint_date=f"svc_{date}",
     )
     with open(cp_file) as fh:
@@ -52,11 +81,23 @@ def run_checkpoint(date: str) -> dict:
     return {"date": date, "checkpoint_file": str(cp_file), "reconciliation": report}
 
 
-def main() -> int:
-    results = [run_checkpoint(d) for d in SERVICE_DATES]
+def main(argv: list[str] | None = None) -> int:
+    args = parse_args(argv)
+    inputs = resolve_service_rate_inputs(args.rate_dir, prefer_fixture=args.prefer_fixture)
+    output_dir = Path(args.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    reconciliation_output = (
+        Path(args.reconciliation_output)
+        if args.reconciliation_output
+        else output_dir / "reconciliation_report_svc.json"
+    )
+    reconciliation_output.parent.mkdir(parents=True, exist_ok=True)
+
+    results = [run_checkpoint(d, inputs) for d in SERVICE_DATES]
 
     summaries = {}
     residual_classifications = {}
+    adjudication_outputs = {}
     for r in results:
         rec = r["reconciliation"]
         s = rec.get("summary", rec)
@@ -70,6 +111,12 @@ def main() -> int:
         print(f"{r['date']}: matched={s.get('total_matched')}/"
               f"{s.get('total_entries_checkpoint')} "
               f"(matched_rate={s.get('matched_rate')})")
+        adj_path = output_dir / f"adjudication_report_svc_{r['date']}.json"
+        adj = generate_adjudication_report(rec, str(inputs.events), output_path=adj_path)
+        adjudication_outputs[r["date"]] = {
+            "path": str(adj_path),
+            "summary": adj["summary"],
+        }
 
         # Collect explicit residual-mismatch classifications.
         residuals = []
@@ -92,27 +139,35 @@ def main() -> int:
         "artifact_kind": "service_reconciliation_report",
         "generator": "verify_svc_reproducibility",
         "inputs": {
+            "source": inputs.source,
+            "rate_dir": str(inputs.rate_dir),
             "base_11_2017_ct_rate": {
-                "path": str(BASE),
-                "size_bytes": BASE.stat().st_size,
-                "sha256": sha256(BASE),
+                "path": str(inputs.base),
+                "size_bytes": inputs.base.stat().st_size,
+                "sha256": sha256(inputs.base),
             },
             "llm_svc_events": {
-                "path": str(EVENTS),
-                "size_bytes": EVENTS.stat().st_size,
-                "sha256": sha256(EVENTS),
+                "path": str(inputs.events),
+                "size_bytes": inputs.events.stat().st_size,
+                "sha256": sha256(inputs.events),
             },
+        },
+        "outputs": {
+            "reconciliation_report_svc": str(reconciliation_output),
+            "adjudication_reports": adjudication_outputs,
         },
         "summaries": summaries,
         "residual_classifications": residual_classifications,
         "checkpoints": {r["date"]: r["reconciliation"] for r in results},
     }
 
-    OUTPUT.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"\nWrote {OUTPUT} ({OUTPUT.stat().st_size} bytes)")
+    reconciliation_output.write_text(
+        json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    print(f"\nWrote {reconciliation_output} ({reconciliation_output.stat().st_size} bytes)")
 
     # Validate it is non-empty valid JSON
-    loaded = json.loads(OUTPUT.read_text(encoding="utf-8"))
+    loaded = json.loads(reconciliation_output.read_text(encoding="utf-8"))
     assert loaded, "report is empty"
     assert "summaries" in loaded, "missing summaries"
     print("VALID JSON, non-empty, has summaries.")

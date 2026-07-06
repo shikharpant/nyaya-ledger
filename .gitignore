@@ -35,4 +35,8 @@ scraping_lessons_learned.md
 # Local tooling state
 .opencode/node_modules/
 .opencode/package-lock.json
+.opencode/package.json
+.opencode/bun.lock
+.opencode/skills
+.opencode/goals/
 .zenith/

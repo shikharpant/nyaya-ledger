@@ -1,8 +1,36 @@
-# HANDOFF SNAPSHOT — Service Rate Checkpoints / Zenith Closure
+# HISTORICAL HANDOFF SNAPSHOT — Service Rate Checkpoints / Zenith Closure
+
+## READ FIRST: SUPERSEDED BY JUL 6 SERVICE CLOSURE
+
+This file is retained only as a historical July 5 snapshot. It is not the
+authoritative current service checkpoint handoff.
+
+Current service checkpoint closure is documented in:
+
+- `handoff_followup_closure.md`
+- `service_checkpoint_closure_classification.md`
+
+Current closure baseline from tracked fixtures:
+
+- `svc_2019-04-01`: `40/40`
+- `svc_2024-10-24`: `41/41`
+- `svc_2025-03-31`: `41/41`
+
+Current clean-checkout reproduction path:
+
+```bash
+python3 -m pytest tests/test_service_checkpoint_closure.py -q
+python3 scripts/regenerate_svc_reconciliation_report.py --prefer-fixture
+```
+
+The older `36/41` and ignored-`derived/` instructions below are historical
+provenance for the paused July 5 run only.
 
 ## READ FIRST: PAUSED STATE AFTER TERMINAL REVIEW PATCH (Sun Jul 5 2026, 16:43 Asia/Colombo)
 
-This is now the authoritative current state. The older "READ FIRST" block below is historical and is superseded where it says "only mission closure remains."
+This was the authoritative state on Jul 5 before the Jul 6 fixture-based
+closure. It is now superseded by the "READ FIRST: SUPERSEDED BY JUL 6 SERVICE
+CLOSURE" block above.
 
 ### User instruction at pause
 
@@ -15,7 +43,7 @@ and pause the work for now
 
 Do not dispatch more Zenith work until the user explicitly resumes. In particular, do not call `advance_project` or `end_mission` as part of handoff-only cleanup.
 
-### Current Zenith project
+### Historical Zenith project at Jul 5 pause
 
 - Project id: `20260705T055346Z-follow-up-mission-after-done-project-20260703t101943z-phase-1-co`
 - Mission: `mission-001`
@@ -31,9 +59,9 @@ I attempted `end_mission` after the previous handoff said all gates were cleared
 - Attention id: `att-terminal-review-461884`
 - Terminal review file: `/home/shikhar/.zenith/projects/20260705T055346Z-follow-up-mission-after-done-project-20260703t101943z-phase-1-co/.zenith/missions/mission-001/terminal-reviews/2026-07-05T10-35-24Z.md`
 
-The terminal review found four closure blockers from current workspace evidence:
+The Jul 5 terminal review found four closure blockers from then-current workspace evidence:
 
-1. `GAP-001`: live service checkpoint adjudication still unresolved. The reviewer reran `main.py version rate-adjudicate` against current repo files and got lower live match rates than the refreshed artifacts:
+1. `GAP-001`: live service checkpoint adjudication was still unresolved. The reviewer reran `main.py version rate-adjudicate` against then-current repo files and got lower live match rates than the refreshed artifacts:
    - 2019: `29/39`, `10 ambiguous`
    - 2024: `27/41`, `14 ambiguous`
    - 2025: `28/41`, `13 ambiguous`
@@ -41,7 +69,9 @@ The terminal review found four closure blockers from current workspace evidence:
 3. `GAP-003`: MCP/runtime validation did not complete. `python3 scripts/test_mcp_live.py`, an official MCP stdio client probe against `python3 scripts/serve_mcp.py --transport stdio`, and `make verify` all hung or timed out in the review.
 4. `GAP-004`: existing tests passed but did not gate live service checkpoint closure.
 
-Treat those as real live blockers until revalidated. Do not override the terminal review based only on the older v4/v5 cleared validators.
+These were real live blockers on Jul 5. They were later revalidated and
+superseded by the Jul 6 service closure documented in
+`handoff_followup_closure.md`.
 
 ### Patch applied to Zenith after terminal review
 
@@ -82,7 +112,7 @@ New tasks added:
 - `validate-live-regression-v1` -> `VAL-LIVE-REG-001`
 - `gate-live-regression-v1` -> `VAL-LIVE-REG-001`
 
-### Current task state at pause
+### Historical task state at pause
 
 Read-only `inspect_project` after the interrupted `advance_project(max_steps=3)` showed:
 
@@ -123,7 +153,7 @@ At pause, `ps -ef` still showed Zenith/Codex worker processes from the interrupt
 
 There were also multiple Zenith server processes and codebase-memory MCP processes. I did not kill anything because the user asked only to update the handoff and pause work. Before resuming, inspect active processes and Zenith task state; if workers are still running but should be stopped, get explicit user approval or use the runtime's intended cancellation/attention path rather than silently killing work.
 
-### Current working tree at pause
+### Historical working tree at pause
 
 `git status --short` at pause:
 
@@ -175,9 +205,11 @@ Do not restart full remote VLM calls unless the resumed investigation proves cur
 
 ## READ FIRST: CURRENT CONTINUATION STATE (Sun Jul 5 2026, post-Hermes follow-up)
 
-This file originally described the pre-VLM state. The sections below are kept for provenance, but the authoritative current state is this block.
+This file originally described the pre-VLM state. The sections below are kept
+for provenance, but the authoritative current service closure is now the Jul 6
+fixture-based package documented in `handoff_followup_closure.md`.
 
-### Current repo and mission
+### Historical repo and mission snapshot
 
 - Repo: `/home/shikhar/openclaw-workspace/Projects/Git_for_Law`
 - Current git HEAD: `0814e7b`
@@ -186,7 +218,7 @@ This file originally described the pre-VLM state. The sections below are kept fo
 - Runtime state at interruption: `mission_running`
 - Important nuance: the user interrupted the final `end_mission` call. Before that interruption, `inspect_project` showed all active gates cleared, including `gate-service-v5`. The next agent should inspect the project and call `end_mission` again if the state is still `mission_running`.
 
-### What changed since the older handoff
+### What changed by this historical Jul 5 handoff
 
 The older handoff said full VLM extraction and adjudication regeneration were still pending. That is no longer true.
 
@@ -195,7 +227,7 @@ Completed in the follow-up run:
 - Full cached VLM service checkpoint processing was completed for the relevant service PDFs.
 - `scripts/vlm_enhance_service_checkpoint.py` was updated and validated.
 - `tests/test_service_vlm_checkpoint.py` was added and validated.
-- Current service checkpoints now reconcile at:
+- Historical Jul 5 service checkpoints then reconciled at:
   - `2019-04-01`: `39/39`
   - `2024-10-24`: `36/41`
   - `2025-03-31`: `36/41`
@@ -210,7 +242,7 @@ Completed in the follow-up run:
   - `validate-codebase-memory`
   - `gate-codebase-memory`
 
-### Current validation status
+### Historical validation status
 
 Fresh validation path that matters:
 
@@ -265,12 +297,12 @@ The blocking gap was `VAL-ART-001`: validators found that only `adjudication_rep
 The stale files were then patched from fresh current-input generation:
 
 - `adjudication_report_all.json`
-  - service entry `2024-10-24`: now `matched=36/41`, `match_rate=87.8`
-  - service entry `2025-03-31`: now `matched=36/41`, `match_rate=87.8`
+  - service entry `2024-10-24`: then `matched=36/41`, `match_rate=87.8`
+  - service entry `2025-03-31`: then `matched=36/41`, `match_rate=87.8`
 - `adjudication_report_svc_2024-10-24.json`
-  - now `matched=36/41`, `match_rate=87.8`, `confidence_score=0.8671`
+  - then `matched=36/41`, `match_rate=87.8`, `confidence_score=0.8671`
 - `adjudication_report_svc_2025-03-31.json`
-  - now `matched=36/41`, `match_rate=87.8`, `confidence_score=0.8695`
+  - then `matched=36/41`, `match_rate=87.8`, `confidence_score=0.8695`
 - `adjudication_report.json`
   - `service_summaries` now contain:
     - `2019-04-01`: `total_matched=39`, `total_entries_checkpoint=39`
@@ -280,7 +312,7 @@ The stale files were then patched from fresh current-input generation:
     - 2024 checkpoint hash prefix: `b4b2367ce84f`
     - 2025 checkpoint hash prefix: `4d53d763737c`
 
-The freshness check performed after patching showed all of the following are newer than both current service checkpoints:
+The historical freshness check performed after patching showed all of the following were newer than both then-current service checkpoint files:
 
 - `adjudication_report.json`
 - `adjudication_report_all.json`
@@ -310,7 +342,7 @@ Key generated/fresh files from `/tmp/git_for_law_scrutiny_after_refresh_current_
 - `VAL-CP-001_checkpoint_probe.json`
 - `VAL-VLM-002_parser_probe.json`
 
-### Current working tree
+### Historical working tree
 
 At the time this handoff was updated, `git status --short` showed:
 
@@ -336,7 +368,7 @@ Full suite:
 /usr/bin/python3 -m pytest tests/ -q
 ```
 
-Result in current validated environment:
+Result in the historical Jul 5 validated environment:
 
 ```text
 370 passed in ~102s
@@ -409,7 +441,9 @@ Expected important lines:
 
 Only mission closure remains, unless `end_mission` surfaces a new closure-specific attention item.
 
-Do not spend time re-running external VLM calls. The current mission closure path is based on cached page HTML and refreshed artifacts. The user gave explicit approval for local codebase-memory MCP and personal VLM server use earlier in the run, but no further remote VLM calls should be necessary for closure.
+Do not spend time re-running external VLM calls for this historical Jul 5 path.
+The current Jul 6 service closure path is fixture-based and does not depend on
+ignored `derived/` VLM artifacts.
 
 ---
 
@@ -428,9 +462,12 @@ Do not spend time re-running external VLM calls. The current mission closure pat
 Validating an event-sourced GST rate schedule compiler against CBIC's official "as amended" PDF booklets for service rates (Notification 11/2017-Central Tax (Rate)). The compiler reconstructs the notification text at any date from amendment events. We compare its output against independent PDF checkpoints to validate accuracy.
 
 ### 1.2 Why 99%
-Goods rate schedules already match at 99.6-100% across all checkpoints. Service rates are harder due to complex 5-column PDF tables with multi-page text wrapping. Current match rates: 80% (2024), 70% (2025). Target: ≥97.5% (39/40).
+Goods rate schedules already matched at 99.6-100% across all checkpoints in
+this historical context. Service rates were harder due to complex 5-column PDF
+tables with multi-page text wrapping. Historical pre-closure match rates were
+80% (2024), 70% (2025). Target at that time: >=97.5% (39/40).
 
-### 1.3 Current Scorecard
+### 1.3 Historical Scorecard
 
 | Checkpoint | Match | Rate | Confidence |
 |-----------|-------|------|------------|
@@ -643,7 +680,12 @@ The SequenceMatcher `ratio()` function compares FULL strings. When checkpoint de
 
 ---
 
-## 8. EXACT COMMANDS TO REPRODUCE CURRENT STATE
+## 8. HISTORICAL COMMANDS FOR THE JUL 5 STATE
+
+These commands reproduce the old Jul 5 ignored-`derived/` workflow. They are
+not the current service closure path. Use
+`python3 scripts/regenerate_svc_reconciliation_report.py --prefer-fixture` for
+the Jul 6 tracked-fixture closure.
 
 ```bash
 # Verify tests pass

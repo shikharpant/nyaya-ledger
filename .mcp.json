@@ -12,9 +12,9 @@
         "orchestrator"
       ],
       "env": {
-        "ZENITH_ORCHESTRATOR_PROVIDER": "hermes",
-        "ZENITH_WORKER_PROVIDER": "hermes",
-        "ZENITH_WORKER_ACP_COMMAND": "hermes acp"
+        "ZENITH_ORCHESTRATOR_PROVIDER": "opencode",
+        "ZENITH_WORKER_PROVIDER": "opencode",
+        "ZENITH_WORKER_ACP_COMMAND": "opencode acp"
       }
     }
   }

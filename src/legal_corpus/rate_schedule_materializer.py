@@ -63,21 +63,32 @@ def _join_rate_into_desc(description: str, rate: str) -> str:
 # Sub-item marker like "(iii)" or "(a)" — used to detect when a leaked
 # rate+condition run is followed by more sibling items that must survive.
 _ITEM_MARKER_RE = re.compile(r"\(\s*(?:[ivxlc]+|[a-z])\s*\)", re.I)
-_LEAKED_RATE_COND_RE = re.compile(r"\s+\d+\.?\d*\s+(?:Provided|None|Nil)\b", re.I)
+# Only genuine column-5 *markers* ("None"/"Nil") are treated as a leaked
+# rate+condition run. A substantive "Provided that ..." condition clause is
+# NOT a column leak — the service-rate checkpoint keeps such conditions
+# inline in the description (cf. 11/2017 S.No 7 items (ii)-(v): the
+# "2.5 Provided that credit of input tax ..." option is part of the
+# description text and must survive). Peeling it caused the inline rate to
+# be dropped and the description to diverge from the checkpoint.
+_LEAKED_RATE_COND_RE = re.compile(r"\s+\d+\.?\d*\s+(?:None|Nil)\b", re.I)
 _TRAILING_RATE_RE = re.compile(r"\s+\d+\.?\d*$")
 
 
 def _clean_leaked_rate_condition(text: str) -> str:
     """Peel rate/condition text that leaked out of the PDF table columns.
 
-    Amendment ``new_text`` often concatenates the column-4 rate and column-5
-    condition into the description. We peel a *genuinely trailing*
-    ``" <rate> Provided/None/Nil ..."`` run, but never across a subsequent
-    sub-item marker such as ``(iii)`` or ``(a)`` — otherwise sibling items
-    packed into the same new_text would be destroyed (cf. 11/2017 S.No 10
-    item (ii) wiping item (iii), and S.No 7 item (i) wiping items
-    (ia)/(iii)-(vi)). A bare trailing rate (``" 2.5"``, ``" 6"``) is always
-    peeled.
+    Amendment ``new_text`` sometimes concatenates the column-4 rate and the
+    column-5 condition marker into the description. We peel a *genuinely
+    trailing* ``" <rate> None/Nil"`` column-marker run, but never a
+    substantive ``" <rate> Provided that ..."`` condition clause — that is
+    real description text in the service-rate schedule (cf. 11/2017 S.No 7
+    items (ii)-(v), whose "2.5 Provided that credit of input tax ..." rate
+    option the checkpoint carries inline). We also never peel across a
+    subsequent sub-item marker such as ``(iii)`` or ``(a)`` — otherwise
+    sibling items packed into the same new_text would be destroyed (cf.
+    11/2017 S.No 10 item (ii) wiping item (iii), and S.No 7 item (i) wiping
+    items (ia)/(iii)-(vi)). A bare trailing rate (``" 2.5"``, ``" 6"``) is
+    always peeled.
     """
     if not text:
         return text
@@ -546,6 +557,16 @@ class RateMaterializer:
         ``item_id`` (e.g. ``(iii)``) is located in the description and the
         span up to the next sequential item marker is replaced with
         ``new_text``. Sibling sub-items are left intact.
+
+        When ``new_text`` itself carries *sequential* sibling markers beyond
+        ``item_id`` (e.g. a substitution of item (i) that also restates the
+        new (ii)), the consumed span is extended to the marker following the
+        last sequential marker present in ``new_text``. Otherwise the restated
+        siblings would be duplicated against their stale counterparts in the
+        old description (cf. 20/2019 S.No 7 item (i): the new_text supplies
+        the post-amendment (i) and (ii); without this extension the old
+        (ii) "Accommodation in hotels ..." survived and was mis-concatenated
+        as ``"specified premises"(ii) Accommodation ..."``).
         """
         desc = entry.description
         idx = desc.find(item_id)
@@ -571,6 +592,32 @@ class RateMaterializer:
             nxt_idx = desc.find(nxt, idx + len(item_id))
             if nxt_idx >= 0:
                 end_idx = nxt_idx
+
+        # If new_text restates sequential siblings of item_id, extend the
+        # consumed span so those restated items overwrite their stale
+        # counterparts instead of being duplicated. Walk the strict
+        # i -> ii -> iii ... (or a -> b -> c ...) chain and stop at the first
+        # sequential marker absent from new_text, so cross-references such
+        # as "[Please refer to Explanation no. (iv)]" never extend the span.
+        cursor = item_id
+        while True:
+            nxt = _next_item_marker(cursor)
+            if not nxt:
+                break
+            inner = nxt.strip().strip("()")
+            if re.search(r"\(\s*" + re.escape(inner) + r"\s*\)", new_text):
+                after = _next_item_marker(nxt)
+                if after:
+                    ai = desc.find(after, idx)
+                    if 0 <= ai:
+                        end_idx = ai
+                    else:
+                        end_idx = len(desc)
+                else:
+                    end_idx = len(desc)
+                cursor = nxt
+                continue
+            break
 
         entry.description = desc[:idx] + new_text + desc[end_idx:]
         return True
@@ -732,6 +779,22 @@ class RateMaterializer:
 
         desc = entry.description
         if not after_words or len(after_words) < 3:
+            return False
+
+        # A bare sub-item marker anchor (``"(i)"``, ``"(a)"``, ``"(iv)"``) is
+        # serial-ambiguous: it can name a clause in *any* entry. When the
+        # compiler loses the enclosing serial-number context (as happened
+        # with the 3/2019 construction notification, whose sub-clauses were
+        # emitted as RATE_INSERT_WORDS carrying ``sno=17``), such an event is
+        # applied to whichever entry happens to own a matching marker —
+        # contaminating, e.g., the leasing entry (S.No 17) with construction
+        # / percentage-invoicing / ITC text that belongs to S.No 3. Genuine
+        # clause-level amendments are carried by RATE_SUBSTITUTE_ITEM /
+        # RATE_SUBSTITUTE_COLUMN (which name the item explicitly) or by
+        # RATE_INSERT_WORDS with a *specific* phrase anchor, so skipping a
+        # bare-marker INSERT_WORDS loses no legitimate amendment while
+        # preventing cross-serial contamination (cf. 11/2017 S.No 17).
+        if _ITEM_MARKER_RE.fullmatch(after_words.strip()):
             return False
 
         best_idx = -1

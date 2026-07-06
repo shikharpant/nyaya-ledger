@@ -1,0 +1,621 @@
+{
+  "notification_id": "/in/union/notifications/cbic/central-tax-rate/2017/11-2017-central-tax-rate",
+  "title": "11/2017-Central Tax (Rate): To notify the rates for supply of services under CGST Act",
+  "cbic_no": "11/2017-Central Tax (Rate)",
+  "base_date": "2017-06-28",
+  "effective_from": "2017-06-28",
+  "instrument_type": "services_rate",
+  "schedules": {
+    "I": {
+      "schedule_id": "I",
+      "rate_pct": 0.0,
+      "heading": "Schedule I – Service Rates",
+      "entries": [
+        {
+          "sno": "1.",
+          "tariff_item": "Chapter 99",
+          "description": "All Services",
+          "is_omitted": false,
+          "sub_items": [],
+          "attached_explanation": "",
+          "rate": ""
+        },
+        {
+          "sno": "2.",
+          "tariff_item": "Section 5",
+          "description": "Construction Services",
+          "is_omitted": false,
+          "sub_items": [],
+          "attached_explanation": "",
+          "rate": ""
+        },
+        {
+          "sno": "3.",
+          "tariff_item": "Heading 9954",
+          "description": "(Construction services) (i) Construction of a complex, building, civil structure or a part thereof, including a complex or building intended for sale to a buyer, wholly or partly, except where the entire consideration has been received after issuance of completion certificate, where required, by the competent authority or after its first occupation, whichever is earlier. (Provisions of paragraph 2 of this notification shall apply for valuation of this service) 9 - (ii) composite supply of works contract as defined in clause 119 of section 2 of Central Goods and Services Tax Act, 2017. 9 - (iii) construction services other than (i) and (ii) above. 9 -",
+          "is_omitted": false,
+          "sub_items": [],
+          "attached_explanation": "",
+          "rate": ""
+        },
+        {
+          "sno": "4.",
+          "tariff_item": "Section 6",
+          "description": "Distributive Trade Services; Accommodation, Food and Beverage Service; Transport Services; Gas and 2 Electricity Distribution Services",
+          "is_omitted": false,
+          "sub_items": [],
+          "attached_explanation": "",
+          "rate": ""
+        },
+        {
+          "sno": "5.",
+          "tariff_item": "Heading 9961",
+          "description": "Services in wholesale trade. Explanation-This service does not include sale or purchase of goods but includes: – Services of commission agents, commodity brokers, and auctioneers and all other traders who negotiate whole sale commercial transactions between buyers and sellers, for a fee or commission’ – Services of electronic whole sale agents and brokers, – Services of whole sale auctioning houses.",
+          "is_omitted": false,
+          "sub_items": [
+            {
+              "label": "",
+              "text": "",
+              "rate": "9",
+              "condition": "-"
+            }
+          ],
+          "attached_explanation": "",
+          "rate": "9"
+        },
+        {
+          "sno": "6.",
+          "tariff_item": "Heading 9962",
+          "description": "Services in retail trade. Explanation- This service does not include sale or purchase of goods",
+          "is_omitted": false,
+          "sub_items": [
+            {
+              "label": "",
+              "text": "",
+              "rate": "9",
+              "condition": "-"
+            }
+          ],
+          "attached_explanation": "",
+          "rate": "9"
+        },
+        {
+          "sno": "7.",
+          "tariff_item": "Heading 9963",
+          "description": "(Accommodation, food and beverage services) (i) Supply, by way of or as part of any service or in any other manner whatsoever, of goods, being food or any other article for human consumption or drink, where such supply or service is for cash, deferred payment or other valuable consideration, provided by a restaurant, eating joint including mess, canteen, neither having the facility of air- conditioning or central air-heating in any part of the establishment, at any time during the year nor having licence or permit or by whatever name called to serve alcoholic liquor for human consumption. 6 - (ii) Accommodation in hotels, inns, guest houses, clubs, campsites or other commercial places meant for residential or lodging purposes having declared tariff of a unit of accommodation of one thousand rupees and above but less than two thousand five hundred rupees per unit per day or equivalent. Explanation.- “declared tariff” includes charges for all amenities provided in the unit of accommodation (given on rent for stay) like furniture, air conditioner, refrigerators or any other amenities, but without excluding any discount offered on the published charges for such unit. 6 - (iii) Supply, by way of or as part of any service or in any other manner whatsoever, of goods, being food or any other article for human consumption or any drink, where such supply or service is for cash, deferred payment or other valuable consideration, provided by a restaurant, eating joint including mess, canteen, having licence or 9 - 3 permit or by whatever name called to serve alcoholic liquor for human consumption. (iv) Supply, by way of or as part of any service or in any other manner whatsoever, of goods, being food or any other article for human consumption or any drink, where such supply or service is for cash, deferred payment or other valuable consideration, provided by a restaurant, eating joint including mess, canteen, having the facility of air-conditioning or central air-heating in any part of the establishment, at any time during the year. 9 - (v) Supply, by way of or as part of any service or in any other manner whatsoever in outdoor catering wherein goods, being food or any other article for human consumption or any drink (whether or not alcoholic liquor for human consumption), as a part of such outdoor catering and such supply or service is for cash, deferred payment or other valuable consideration. 9 - (vi) Accommodation in hotels, inns, guest houses, clubs, campsites or other commercial places meant for residential or lodging purposes having declared tariff of a unit of accommodation of two thousand five hundred rupees and above but less than seven thousand five hundred rupees per unit per day or equivalent. Explanation.- “declared tariff” includes charges for all amenities provided in the unit of accommodation (given on rent for stay) like furniture, air conditioner, refrigerators or any other amenities, but without excluding any discount offered on the published charges for such unit. 9 - (vii) Supply, by way of or as part of any service or in any other manner whatsoever, of goods, including but not limited to food or any other article for human consumption or any drink (whether or not alcoholic liquor for human consumption), where such supply or service is for cash, deferred payment or other valuable consideration, in a premises (including hotel, convention center, club, pandal, shamiana or any other place, specially arranged for organising a function) together with renting of such premises. 9 - (viii) Accommodation in hotels including five 14 - 4 star hotels, inns, guest houses, clubs, campsites or other commercial places meant for residential or lodging purposes having declared tariff of a unit of accommodation of seven thousand and five hundred rupees and above per unit per day or equivalent. Explanation.-“declared tariff ” includes charges for all amenities provided in the unit of accommodation (given on rent for stay) like furniture, air conditioner, refrigerators or any other amenities, but without excluding any discount offered on the published charges for such unit. (ix) Accommodation, food and beverage services other than (i), (ii), (iii), (iv), (v), (vi), (vii) and (viii) above. 9 -",
+          "is_omitted": false,
+          "sub_items": [],
+          "attached_explanation": "",
+          "rate": ""
+        },
+        {
+          "sno": "8.",
+          "tariff_item": "Heading 9964",
+          "description": "(Passenger transport services) (i) Transport of passengers, with or without accompanied belongings, by rail in first class or air conditioned coach. 2.5 Provided that credit of input tax charged in respect of goods used in supplying the service is not utilised for paying central tax or integrated tax on the supply of the service (ii) Transport of passengers, with or without accompanied belongings by- (a) air conditioned contract carriage other than motorcab; (b) air conditioned stage carriage; (c) radio taxi. Explanation.- (a) “contract carriage” has the meaning assigned to it in clause (7) of section 2 of the Motor Vehicles Act, 1988 (59 of 1988); (b) “stage carriage” has the meaning assigned to it in clause (40) of section 2 of the Motor Vehicles Act, 1988 (59 of 1988) ; (c) “radio taxi” means a taxi including a radio cab, by whatever name called, which is in two-way radio communication with a central control office and is enabled for tracking using Global Positioning System (GPS) or General Packet Radio Service (GPRS). 2.5 Provided that credit of input tax charged on goods or services used in supplying the service has not been taken [Please refer to Explanation no. (iv)] (iii) Transport of passengers, with or without accompanied belongings, by air in economy class. 2.5 Provided that credit of input tax charged on goods used in supplying 5 the service has not been taken [Please refer to Explanation no. (iv)] (iv) Transport of passengers, with or without accompanied belongings, by air, embarking from or terminating in a Regional Connectivity Scheme Airport, as notified by the Ministry of Civil Aviation. 2.5 Provided that credit of input tax charged on goods used in supplying the service has not been taken [Please refer to Explanation no. (iv)] (v) Transport of passengers by air, with or without accompanied belongings, in other than economy class. 6 - (vi) Transport of passengers by motorcab where the cost of fuel is included in the consideration charged from the service recipient. 2.5 Provided that credit of input tax charged on goods and services used in supplying the service has not been taken [Please refer to Explanation no. (iv)] (vii) Passenger transport services other than (i), (ii) (iii), (iv), (v) and (vi) above. 9 -",
+          "is_omitted": false,
+          "sub_items": [
+            {
+              "label": "(i)",
+              "text": "Transport of passengers, with or without accompanied belongings, by rail in first class or air conditioned coach.",
+              "rate": "2.5",
+              "condition": "Provided that credit of input tax charged in respect of goods used in supplying the service is not utilised for paying central tax or integrated tax on the supply of the service"
+            },
+            {
+              "label": "(ii)",
+              "text": "Transport of passengers, with or without accompanied belongings by- (a) air conditioned contract carriage other than motorcab; (b) air conditioned stage carriage; (c) radio taxi. Explanation.- (a) “contract carriage” has the meaning assigned to it in clause (7) of section 2 of the Motor Vehicles Act, 1988 (59 of 1988); (b) “stage carriage” has the meaning assigned to it in clause (40) of section 2 of the Motor Vehicles Act, 1988 (59 of 1988) ; (c) “radio taxi” means a taxi including a radio cab, by whatever name called, which is in two-way radio communication with a central control office and is enabled for tracking using Global Positioning System (GPS) or General Packet Radio Service (GPRS).",
+              "rate": "2.5",
+              "condition": "Provided that credit of input tax charged on goods or services used in supplying the service has not been taken [Please refer to Explanation no. (iv)]"
+            },
+            {
+              "label": "(iii)",
+              "text": "Transport of passengers, with or without accompanied belongings, by air in economy class.",
+              "rate": "2.5",
+              "condition": "Provided that credit of input tax charged on goods used in supplying 5 the service has not been taken [Please refer to Explanation no. (iv)]"
+            },
+            {
+              "label": "(iv)",
+              "text": "Transport of passengers, with or without accompanied belongings, by air, embarking from or terminating in a Regional Connectivity Scheme Airport, as notified by the Ministry of Civil Aviation.",
+              "rate": "2.5",
+              "condition": "Provided that credit of input tax charged on goods used in supplying the service has not been taken [Please refer to Explanation no. (iv)]"
+            },
+            {
+              "label": "(v)",
+              "text": "Transport of passengers by air, with or without accompanied belongings, in other than economy class.",
+              "rate": "6",
+              "condition": "-"
+            },
+            {
+              "label": "(vi)",
+              "text": "Transport of passengers by motorcab where the cost of fuel is included in the consideration charged from the service recipient.",
+              "rate": "2.5",
+              "condition": "Provided that credit of input tax charged on goods and services used in supplying the service has not been taken [Please refer to Explanation no. (iv)]"
+            },
+            {
+              "label": "(vii)",
+              "text": "Passenger transport services other than (i), (ii) (iii), (iv), (v) and (vi) above.",
+              "rate": "9",
+              "condition": "-"
+            }
+          ],
+          "attached_explanation": "",
+          "rate": ""
+        },
+        {
+          "sno": "9.",
+          "tariff_item": "Heading 9965",
+          "description": "(Goods transport services) (i) Transport of goods by rail (other than services specified at item no. (iv)). 2.5 Provided that credit of input tax charged in respect of goods in supplying the service is not utilised for paying central tax or integrated tax on the supply of the service (ii) Transport of goods in a vessel. 2.5 Provided that credit of input tax charged on goods (other than on ships, vessels including bulk carriers and tankers) used in supplying the service has not 6 been taken [Please refer to Explanation no. (iv)] (iii) Services of goods transport agency (GTA) in relation to transportation of goods (including used household goods for personal use). Explanation.- “goods transport agency” means any person who provides service in relation to transport of goods by road and issues consignment note, by whatever name called. 2.5 Provided that credit of input tax charged on goods and services used in supplying the service has not been taken [Please refer to Explanation no. (iv)] (iv) Transport of goods in containers by rail by any person other than Indian Railways. 6 - (v) Goods transport services other than (i), (ii), (iii) and (iv) above. 9 -",
+          "is_omitted": false,
+          "sub_items": [
+            {
+              "label": "(i)",
+              "text": "Transport of goods by rail (other than services specified at item no. (iv)).",
+              "rate": "2.5",
+              "condition": "Provided that credit of input tax charged in respect of goods in supplying the service is not utilised for paying central tax or integrated tax on the supply of the service"
+            },
+            {
+              "label": "(ii)",
+              "text": "Transport of goods in a vessel.",
+              "rate": "2.5",
+              "condition": "Provided that credit of input tax charged on goods (other than on ships, vessels including bulk carriers and tankers) used in supplying the service has not 6 been taken [Please refer to Explanation no. (iv)]"
+            },
+            {
+              "label": "(iii)",
+              "text": "Services of goods transport agency (GTA) in relation to transportation of goods (including used household goods for personal use). Explanation.- “goods transport agency” means any person who provides service in relation to transport of goods by road and issues consignment note, by whatever name called.",
+              "rate": "2.5",
+              "condition": "Provided that credit of input tax charged on goods and services used in supplying the service has not been taken [Please refer to Explanation no. (iv)]"
+            },
+            {
+              "label": "(iv)",
+              "text": "Transport of goods in containers by rail by any person other than Indian Railways.",
+              "rate": "6",
+              "condition": "-"
+            },
+            {
+              "label": "(v)",
+              "text": "Goods transport services other than (i), (ii), (iii) and (iv) above.",
+              "rate": "9",
+              "condition": "-"
+            }
+          ],
+          "attached_explanation": "",
+          "rate": ""
+        },
+        {
+          "sno": "10.",
+          "tariff_item": "Heading 9966",
+          "description": "(Rental services of transport vehicles) (i) Renting of motorcab where the cost of fuel is included in the consideration charged from the service recipient. 2.5 Provided that credit of input tax charged on goods and services used in supplying the service has not been taken [Please refer to Explanation no. (iv)] (ii) Rental services of transport vehicles with or without operators, other than (i) above. 9 -",
+          "is_omitted": false,
+          "sub_items": [
+            {
+              "label": "(i)",
+              "text": "Renting of motorcab where the cost of fuel is included in the consideration charged from the service recipient.",
+              "rate": "2.5",
+              "condition": "Provided that credit of input tax charged on goods and services used in supplying the service has not been taken [Please refer to Explanation no. (iv)]"
+            },
+            {
+              "label": "(ii)",
+              "text": "Rental services of transport vehicles with or without operators, other than (i) above.",
+              "rate": "9",
+              "condition": "-"
+            }
+          ],
+          "attached_explanation": "",
+          "rate": ""
+        },
+        {
+          "sno": "11.",
+          "tariff_item": "Heading 9967",
+          "description": "(Supporting services in transport) (i) Services of goods transport agency (GTA) in relation to transportation of goods (including used household goods for personal use). Explanation.- “goods transport agency” means any person who provides service in relation to transport of goods by road and issues consignment note, by whatever name called. 2.5 Provided that credit of input tax charged on goods and services used in supplying the service has not been taken [Please refer to Explanation no. (iv)] (ii) Supporting services in transport other than (i) above. 9 -",
+          "is_omitted": false,
+          "sub_items": [
+            {
+              "label": "(i)",
+              "text": "Services of goods transport agency (GTA) in relation to transportation of goods (including used household goods for personal use). Explanation.- “goods transport agency” means any person who provides service in relation to transport of goods by road and issues consignment note, by whatever name called.",
+              "rate": "2.5",
+              "condition": "Provided that credit of input tax charged on goods and services used in supplying the service has not been taken [Please refer to Explanation no. (iv)]"
+            },
+            {
+              "label": "(ii)",
+              "text": "Supporting services in transport other than (i) above.",
+              "rate": "9",
+              "condition": "-"
+            }
+          ],
+          "attached_explanation": "",
+          "rate": ""
+        },
+        {
+          "sno": "12.",
+          "tariff_item": "Heading 9968",
+          "description": "Postal and courier services.",
+          "is_omitted": false,
+          "sub_items": [
+            {
+              "label": "",
+              "text": "",
+              "rate": "9",
+              "condition": "-"
+            }
+          ],
+          "attached_explanation": "",
+          "rate": "9"
+        },
+        {
+          "sno": "13.",
+          "tariff_item": "Heading 9969",
+          "description": "Electricity, gas, water and other distribution services.",
+          "is_omitted": false,
+          "sub_items": [
+            {
+              "label": "",
+              "text": "",
+              "rate": "9",
+              "condition": "-"
+            }
+          ],
+          "attached_explanation": "",
+          "rate": "9"
+        },
+        {
+          "sno": "14.",
+          "tariff_item": "Section 7",
+          "description": "Financial and related services; real estate services; and rental and leasing services.",
+          "is_omitted": false,
+          "sub_items": [],
+          "attached_explanation": "",
+          "rate": ""
+        },
+        {
+          "sno": "15.",
+          "tariff_item": "Heading 9971",
+          "description": "(Financial and related services) (i) Services provided by a foreman of a chit fund in relation to chit. Provided that credit of input tax Explanation.- (a) \"chit\" means a transaction whether called chit, chit fund, chitty, kuri, or by whatever name by or under which a person enters into an agreement with a specified number of persons that every one of them shall subscribe a certain sum of money (or a certain quantity of grain instead) by way of periodical instalments over a definite period and that each subscriber shall, in his turn, as determined by lot or by auction or by tender or in such other manner as may be specified in the chit agreement, be entitled to a prize amount; (b) “foreman of a chit fund” shall have the same meaning as is assigned to the expression “foreman” in clause (j) of section 2 of the Chit Funds Act, 1982 (40 of 1982). charged on goods used in supplying the service has not been taken [Please refer to Explanation no. (iv)] (ii) Transfer of the right to use any goods for any purpose (whether or not for a specified period) for cash, deferred payment or other valuable consideration. Same rate of central tax as on supply of like goods involving transfer of title in goods - (iii) Any transfer of right in goods or of undivided share in goods without the transfer of title thereof. Same rate of central tax as on supply of like goods involving transfer of title in goods - (iv) Leasing of aircrafts by an operator for operating scheduled air transport service or scheduled air cargo service by way of transaction covered by clause (f) paragraph 5 of Schedule II of the Central Goods and Services Act, 2017. Explanation.- (a) “operator” means a person, organisation or enterprise engaged in or offering to engage in aircraft operations; (b) “scheduled air transport service” means an air transport service undertaken between the same two or more places operated according to a published time table or with 2.5 Provided that credit of input tax charged on goods used in supplying the service has not been taken [Please refer to Explanation no. (iv)] 8 flights so regular or frequent that they constitute a recognisable systematic series, each flight being open to use by members of the public; (c) “scheduled air cargo service” means air transportation of cargo or mail on a scheduled basis according to a published time table or with flights so regular or frequent that they constitute a recognisably systematic series, not open to use by passengers. (v) Financial and related services other than (i), (ii), (iii), and (iv) above. 9 -",
+          "is_omitted": false,
+          "sub_items": [],
+          "attached_explanation": "",
+          "rate": ""
+        },
+        {
+          "sno": "16.",
+          "tariff_item": "Heading 9972",
+          "description": "Real estate services.",
+          "is_omitted": false,
+          "sub_items": [
+            {
+              "label": "",
+              "text": "",
+              "rate": "9",
+              "condition": "-"
+            }
+          ],
+          "attached_explanation": "",
+          "rate": "9"
+        },
+        {
+          "sno": "17.",
+          "tariff_item": "Heading 9973",
+          "description": "(Leasing or rental services, with or without operator) (i) Temporary or permanent transfer or permitting the use or enjoyment of Intellectual Property (IP) right in respect of goods other than Information Technology software. 6 - (ii) Temporary or permanent transfer or permitting the use or enjoyment of Intellectual Property (IP) right in respect of Information Technology software. [Please refer to Explanation no. (v)] 9 - (iii) Transfer of the right to use any goods for any purpose (whether or not for a specified period) for cash, deferred payment or other valuable consideration. Same rate of central tax as on supply of like goods involving transfer of title in goods - (iv) Any transfer of right in goods or of undivided share in goods without the transfer of title thereof. Same rate of central tax as on supply of like goods involving transfer of title in goods - (v) Leasing of aircrafts by an operator for operating scheduled air transport service or scheduled air cargo service by way of transaction covered by clause (f) paragraph 5 of Schedule II of the Central Goods and Services Act, 2017. Explanation.- (a) “operator” means a person, organisation 2.5 Provided that credit of input tax charged on goods used in supplying the service has not been taken [Please refer to Explanation no. 9 or enterprise engaged in or offering to engage in aircraft operations; (b) “scheduled air transport service” means an air transport service undertaken between the same two or more places operated according to a published time table or with flights so regular or frequent that they constitute a recognisable systematic series, each flight being open to use by members of the public; (c) “scheduled air cargo service” means air transportation of cargo or mail on a scheduled basis according to a published time table or with flights so regular or frequent that they constitute a recognisably systematic series, not open to use by passengers. (iv)] (vi) Leasing or rental services, with or without operator, other than (i), (ii), (iii), (iv) and (v) above. Same rate of central tax as applicable on supply of like goods involving transfer of title in goods -",
+          "is_omitted": false,
+          "sub_items": [],
+          "attached_explanation": "",
+          "rate": ""
+        },
+        {
+          "sno": "18.",
+          "tariff_item": "Section 8",
+          "description": "Business and Production Services",
+          "is_omitted": false,
+          "sub_items": [],
+          "attached_explanation": "",
+          "rate": ""
+        },
+        {
+          "sno": "19.",
+          "tariff_item": "Heading 9981",
+          "description": "Research and development services.",
+          "is_omitted": false,
+          "sub_items": [
+            {
+              "label": "",
+              "text": "",
+              "rate": "9",
+              "condition": "-"
+            }
+          ],
+          "attached_explanation": "",
+          "rate": "9"
+        },
+        {
+          "sno": "20.",
+          "tariff_item": "Heading 9982",
+          "description": "Legal and accounting services.",
+          "is_omitted": false,
+          "sub_items": [
+            {
+              "label": "",
+              "text": "",
+              "rate": "9",
+              "condition": "-"
+            }
+          ],
+          "attached_explanation": "",
+          "rate": "9"
+        },
+        {
+          "sno": "21.",
+          "tariff_item": "Heading 9983",
+          "description": "(Other professional, technical and business services) (i) Selling of space for advertisement in print media. 2.5 - (ii) Other professional, technical and business services other than (i) above. 9 -",
+          "is_omitted": false,
+          "sub_items": [
+            {
+              "label": "(i)",
+              "text": "Selling of space for advertisement in print media.",
+              "rate": "2.5",
+              "condition": "-"
+            },
+            {
+              "label": "(ii)",
+              "text": "Other professional, technical and business services other than (i) above.",
+              "rate": "9",
+              "condition": "-"
+            }
+          ],
+          "attached_explanation": "",
+          "rate": ""
+        },
+        {
+          "sno": "22.",
+          "tariff_item": "Heading 9984",
+          "description": "Telecommunications, broadcasting and information supply services.",
+          "is_omitted": false,
+          "sub_items": [
+            {
+              "label": "",
+              "text": "",
+              "rate": "9",
+              "condition": "-"
+            }
+          ],
+          "attached_explanation": "",
+          "rate": "9"
+        },
+        {
+          "sno": "23.",
+          "tariff_item": "Heading 9985",
+          "description": "(Support services) (i) Supply of tour operators services. Explanation.- \"tour operator\" means any person engaged in the business of planning, scheduling, organizing, arranging tours (which may include arrangements for accommodation, sightseeing or other similar services) by any mode of transport, and includes any person engaged in the business of operating tours. 2.5 1. Provided that credit of input tax charged on goods and services used in supplying the service has not been taken [Please refer to Explanation no. (iv)] 2. The bill issued for supply of this 10 service indicates that it is inclusive of charges of accommodation and transportation required for such a tour and the amount charged in the bill is the gross amount charged for such a tour including the charges of accommodation and transportation required for such a tour. (ii) Support services other than (i) above 9 -",
+          "is_omitted": false,
+          "sub_items": [
+            {
+              "label": "(i)",
+              "text": "Supply of tour operators services. Explanation.- \"tour operator\" means any person engaged in the business of planning, scheduling, organizing, arranging tours (which may include arrangements for accommodation, sightseeing or other similar services) by any mode of transport, and includes any person engaged in the business of operating tours.",
+              "rate": "2.5",
+              "condition": "1. Provided that credit of input tax charged on goods and services used in supplying the service has not been taken [Please refer to Explanation no. (iv)] 2. The bill issued for supply of this 10 service indicates that it is inclusive of charges of accommodation and transportation required for such a tour and the amount charged in the bill is the gross amount charged for such a tour including the charges of accommodation and transportation required for such a tour."
+            },
+            {
+              "label": "(ii)",
+              "text": "Support services other than (i) above",
+              "rate": "9",
+              "condition": "-"
+            }
+          ],
+          "attached_explanation": "",
+          "rate": ""
+        },
+        {
+          "sno": "24.",
+          "tariff_item": "Heading 9986",
+          "description": "(i) Support services to agriculture, forestry, fishing, animal husbandry. Explanation. – “Support services to agriculture, forestry, fishing, animal husbandry” mean - (i) Services relating to cultivation of plants and rearing of all life forms of animals, except the rearing of horses, for food, fibre, fuel, raw material or other similar products or agricultural produce by way of— (a) agricultural operations directly related to production of any agricultural produce including cultivation, harvesting, threshing, plant protection or testing; (b) supply of farm labour; (c) processes carried out at an agricultural farm including tending, pruning, cutting, harvesting, drying, cleaning, trimming, sun drying, fumigating, curing, sorting, grading, cooling or bulk packaging and such like operations which do not alter the essential characteristics of agricultural produce but make it only marketable for the primary market; (d) renting or leasing of agro machinery or vacant land with or without a structure incidental to its use; Nil - 11 (e) loading, unloading, packing, storage or warehousing of agricultural produce; (f) agricultural extension services; (g) services by any Agricultural Produce Marketing Committee or Board or services provided by a commission agent for sale or purchase of agricultural produce. (ii) Services by way of pre-conditioning, pre-cooling, ripening, waxing, retail packing, labelling of fruits and vegetables which do not change or alter the essential characteristics of the said fruits or vegetables. (iii) Carrying out an intermediate production process as job work in relation to cultivation of plants and rearing of all life forms of animals, except the rearing of horses, for food, fibre, fuel, raw material or other similar products or agricultural produce. (ii) Support services to mining, electricity, gas and water distribution. 9 -",
+          "is_omitted": false,
+          "sub_items": [],
+          "attached_explanation": "",
+          "rate": ""
+        },
+        {
+          "sno": "25.",
+          "tariff_item": "Heading 9987",
+          "description": "Maintenance, repair and installation (except construction) services.",
+          "is_omitted": false,
+          "sub_items": [
+            {
+              "label": "",
+              "text": "",
+              "rate": "9",
+              "condition": "-"
+            }
+          ],
+          "attached_explanation": "",
+          "rate": "9"
+        },
+        {
+          "sno": "26.",
+          "tariff_item": "Heading 9988",
+          "description": "(Manufacturing services on physical inputs (goods) owned by others) (i) Services by way of job work in relation to- (a) Printing of newspapers; (b) Textile yarns (other than of man-made fibres) and textile fabrics; (c) Cut and polished diamonds; precious and semi-precious stones; or plain and studded jewellery of gold and other precious metals, falling under Chapter 71 in the First Schedule to the Customs Tariff Act, 1975 (51of 1975); (d) Printing of books (including Braille books), journals and periodicals; (e) Processing of hides, skins and leather falling under Chapter 41 in the First Schedule to the Customs Tariff Act, 1975 (51of 1975). Explanation.- “man made fibres” means staple fibres and filaments of organic polymers produced by manufacturing processes either,- (a) by polymerisation of organic monomers to produce polymers such as polyamides, polyesters, polyolefins or polyurethanes, or by chemical modification of polymers produced by 2.5 - 12 this process [for example, poly(vinyl alcohol) prepared by the hydrolysis of poly(vinyl acetate)]; or (b) by dissolution or chemical treatment of natural organic polymers (for example, cellulose) to produce polymers such as cuprammonium rayon (cupro) or viscose rayon, or by chemical modification of natural organic polymers (for example, cellulose, casein and other proteins, or alginic acid), to produce polymers such as cellulose acetate or alginates. (ii) Manufacturing services on physical inputs (goods) owned by others, other than (i) above. 9 -",
+          "is_omitted": false,
+          "sub_items": [
+            {
+              "label": "(i)",
+              "text": "Services by way of job work in relation to- (a) Printing of newspapers; (b) Textile yarns (other than of man-made fibres) and textile fabrics; (c) Cut and polished diamonds; precious and semi-precious stones; or plain and studded jewellery of gold and other precious metals, falling under Chapter 71 in the First Schedule to the Customs Tariff Act, 1975 (51of 1975); (d) Printing of books (including Braille books), journals and periodicals; (e) Processing of hides, skins and leather falling under Chapter 41 in the First Schedule to the Customs Tariff Act, 1975 (51of 1975). Explanation.- “man made fibres” means staple fibres and filaments of organic polymers produced by manufacturing processes either,- (a) by polymerisation of organic monomers to produce polymers such as polyamides, polyesters, polyolefins or polyurethanes, or by chemical modification of polymers produced by",
+              "rate": "2.5",
+              "condition": "- 12 this process [for example, poly(vinyl alcohol) prepared by the hydrolysis of poly(vinyl acetate)]; or (b) by dissolution or chemical treatment of natural organic polymers (for example, cellulose) to produce polymers such as cuprammonium rayon (cupro) or viscose rayon, or by chemical modification of natural organic polymers (for example, cellulose, casein and other proteins, or alginic acid), to produce polymers such as cellulose acetate or alginates."
+            },
+            {
+              "label": "(ii)",
+              "text": "Manufacturing services on physical inputs (goods) owned by others, other than (i) above.",
+              "rate": "9",
+              "condition": "-"
+            }
+          ],
+          "attached_explanation": "",
+          "rate": ""
+        },
+        {
+          "sno": "27.",
+          "tariff_item": "Heading 9989",
+          "description": "Other manufacturing services; publishing, printing and reproduction services; materials recovery services.",
+          "is_omitted": false,
+          "sub_items": [
+            {
+              "label": "",
+              "text": "",
+              "rate": "9",
+              "condition": "-"
+            }
+          ],
+          "attached_explanation": "",
+          "rate": "9"
+        },
+        {
+          "sno": "28.",
+          "tariff_item": "Section 9",
+          "description": "Community, Social and Personal Services and other miscellaneous services",
+          "is_omitted": false,
+          "sub_items": [],
+          "attached_explanation": "",
+          "rate": ""
+        },
+        {
+          "sno": "29.",
+          "tariff_item": "Heading 9991",
+          "description": "Public administration and other services provided to the community as a whole; compulsory social security services.",
+          "is_omitted": false,
+          "sub_items": [
+            {
+              "label": "",
+              "text": "",
+              "rate": "9",
+              "condition": "-"
+            }
+          ],
+          "attached_explanation": "",
+          "rate": "9"
+        },
+        {
+          "sno": "30.",
+          "tariff_item": "Heading 9992",
+          "description": "Education services.",
+          "is_omitted": false,
+          "sub_items": [
+            {
+              "label": "",
+              "text": "",
+              "rate": "9",
+              "condition": "-"
+            }
+          ],
+          "attached_explanation": "",
+          "rate": "9"
+        },
+        {
+          "sno": "31.",
+          "tariff_item": "Heading 9993",
+          "description": "Human health and social care services.",
+          "is_omitted": false,
+          "sub_items": [
+            {
+              "label": "",
+              "text": "",
+              "rate": "9",
+              "condition": "-"
+            }
+          ],
+          "attached_explanation": "",
+          "rate": "9"
+        },
+        {
+          "sno": "32.",
+          "tariff_item": "Heading 9994",
+          "description": "Sewage and waste collection, treatment and disposal and other environmental protection services.",
+          "is_omitted": false,
+          "sub_items": [
+            {
+              "label": "",
+              "text": "",
+              "rate": "9",
+              "condition": "-"
+            }
+          ],
+          "attached_explanation": "",
+          "rate": "9"
+        },
+        {
+          "sno": "33.",
+          "tariff_item": "Heading 9995",
+          "description": "Services of membership organisations.",
+          "is_omitted": false,
+          "sub_items": [
+            {
+              "label": "",
+              "text": "",
+              "rate": "9",
+              "condition": "-"
+            }
+          ],
+          "attached_explanation": "",
+          "rate": "9"
+        },
+        {
+          "sno": "34.",
+          "tariff_item": "Heading 9996",
+          "description": "(Recreational, cultural and sporting services) (i) Services by way of admission or access to circus, Indian classical dance including folk dance, theatrical performance, drama. 9 - (ii) Services by way of admission exhibition of cinematograph films where price of admission ticket is one hundred rupees or less. 9 - (iii) Services by way of admission to entertainment events or access to amusement facilities including exhibition of cinematograph films, theme parks, water parks, joy rides, merry-go rounds, go-carting, casinos, race-course, ballet, any sporting event such as Indian Premier League and the like. 14 - (iv) Services provided by a race club by way of totalisator or a license to bookmaker in such club. 14 - (v) Gambling. 14 - (vi) Recreational, cultural and sporting services other than (i), (ii), (iii), (iv) and (v) 9 - 13 above.",
+          "is_omitted": false,
+          "sub_items": [],
+          "attached_explanation": "",
+          "rate": ""
+        },
+        {
+          "sno": "35.",
+          "tariff_item": "Heading 9997",
+          "description": "Other services (washing, cleaning and dyeing services; beauty and physical well-being services; and other miscellaneous services including services nowhere else classified).",
+          "is_omitted": false,
+          "sub_items": [
+            {
+              "label": "",
+              "text": "",
+              "rate": "9",
+              "condition": "-"
+            }
+          ],
+          "attached_explanation": "",
+          "rate": "9"
+        },
+        {
+          "sno": "36.",
+          "tariff_item": "Heading 9998",
+          "description": "Domestic services.",
+          "is_omitted": false,
+          "sub_items": [
+            {
+              "label": "",
+              "text": "",
+              "rate": "9",
+              "condition": "-"
+            }
+          ],
+          "attached_explanation": "",
+          "rate": "9"
+        },
+        {
+          "sno": "37.",
+          "tariff_item": "Heading 9999",
+          "description": "Services provided by extraterritorial organisations and bodies.",
+          "is_omitted": false,
+          "sub_items": [
+            {
+              "label": "",
+              "text": "",
+              "rate": "9",
+              "condition": "-"
+            }
+          ],
+          "attached_explanation": "",
+          "rate": "9"
+        }
+      ]
+    }
+  },
+  "opening_paragraph": "New Delhi, the 28th June, 2017 G.S.R......(E).- In exercise of the powers conferred by sub-section (1) of section 9, sub- section (1) of section 11, sub-section (5) of section 15 and sub-section (1) of section 16 of the Central Goods and Services Tax Act, 2017 (12 of 2017), the Central Government, on the recommendations of the Council, and on being satisfied that it is necessary in the public interest so to do, hereby notifies that the central tax, on the intra-State supply of services of description as specified in column (3) of the Table below, falling under Chapter, Section or Heading of scheme of classification of services as specified in column (2), shall be levied at the rate as specified in the corresponding entry in column (4), subject to the conditions as specified in the corresponding entry in column (5) of the said Table:-",
+  "explanations": [
+    "3. Value of supply of lottery shall be 100/112 of the face value or the price notified in the Official Gazette by the organising State, whichever is higher, in case of lottery run by State Government and 100/128 of the face value or the price notified in the Official Gazette by the organising State, whichever is higher, in case of lottery authorised by State Government. 4. Explanation.- For the purposes of this notification,- (i) Goods includes capital goods. (ii) Reference to “Chapter”, “Section” or “Heading”, wherever they occur, unless the context otherwise requires, shall mean respectively as “Chapter, “Section” and “Heading” in the annexed scheme of classification of services (Annexure). (iii) The rules for the interpretation of the First Schedule to the Customs Tariff Act, 1975 (51 of 1975), the Section and Chapter Notes and the General Explanatory Notes of the First Schedule shall, so far as may be, apply to the interpretation of heading 9988. (iv) Wherever a rate has been prescribed in this notification subject to the condition that credit of input tax charged on goods or services used in supplying the service has not been taken, it shall mean that,- (a) credit of input tax charged on goods or services used exclusively in supplying such service has not been taken; and (b) credit of input tax charged on goods or services used partly for supplying such service and partly for effecting other supplies eligible for input tax credits, is reversed as if supply of such service is an exempt supply and attracts provisions of sub-section (2) of section 17 of the Central Goods and Services Tax Act, 2017 and the rules made thereunder. (v) \"information technology software” means any representation of instructions, data, sound or image, including source code and object code, recorded in a machine readable form, and capable of being manipulated or providing interactivity to a user, by means of a computer or an automatic data processing machine or any other device or equipment."
+  ],
+  "supersedes": "",
+  "source_file": "corpus/in/union/notifications/cbic/central-tax-rate/2017/11-2017-central-tax-rate.xml"
+}

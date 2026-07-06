@@ -1,0 +1,299 @@
+{
+  "checkpoint_date": "2019-04-01",
+  "source_pdf": "docs/service_rate_checkpoints/11-rate-cgst-2019-04-01.pdf",
+  "instruments": {
+    "11/2017-ct-rate": {
+      "notification_ref": "11/2017-ct-rate",
+      "instrument_type": "services_rate",
+      "schedules": {
+        "I": {
+          "schedule_id": "I",
+          "rate_pct": 0.0,
+          "heading": "Schedule I – Service Rates",
+          "entries": [
+            {
+              "sno": "1",
+              "tariff_item": "Chapter 99",
+              "description": "All Services",
+              "rate": "",
+              "is_omitted": false
+            },
+            {
+              "sno": "2",
+              "tariff_item": "Section 5",
+              "description": "Construction Services",
+              "rate": "",
+              "is_omitted": false
+            },
+            {
+              "sno": "2A",
+              "tariff_item": "",
+              "description": "Where a registered person transfers development right or FSI (including additional FSI) to a promoter against consideration, wholly or partly, in the form of construction of apartments, the value of construction service in respect of such apartments shall be deemed to be equal to the Total Amount charged for similar apartments in the project from the independent buyers, other than the person transferring the development right or FSI (including additional FSI), nearest to the date on which such development right or FSI (including additional FSI) is transferred to the promoter, less the value of transfer of land, if any, as prescribed in paragraph 2 above.",
+              "rate": "",
+              "is_omitted": false
+            },
+            {
+              "sno": "3",
+              "tariff_item": "Heading 9954",
+              "description": "(Construction services) (i) Construction of affordable residential apartments by a promoter in a Residential Real Estate Project (herein after referred to as RREP) which commences on or after 1st April, 2019 or in an ongoing RREP in respect of which the promoter has not exercised option to pay central tax on construction of Provided also that credit of apartments at the rates as specified for item input tax charged on goods (ie) or (if) below, as the case may be, in the and services used manner prescribed therein, intended for sale supplying the service hasnot to a buyer, wholly or partly, except where the been taken except to the entire consideration has been received after extent as prescribed in issuance of completion certificate, where Annexure I in the case of required, by the competent authority or after REP other than RREP and in",
+              "rate": "0.75",
+              "is_omitted": false
+            },
+            {
+              "sno": "4",
+              "tariff_item": "Section 6",
+              "description": "Distributive Trade Services; Accommodation, Food and Beverage Service; Transport Services; Gas and Electricity Distribution Services",
+              "rate": "9",
+              "is_omitted": false
+            },
+            {
+              "sno": "5",
+              "tariff_item": "Heading 9961",
+              "description": "Services in wholesale trade. Explanation-This service does not include sale or purchase of goods but includes: – Services of commission agents, commodity brokers, and auctioneers and all other traders who negotiate whole sale commercial transactions between buyers and sellers, for a fee or commission’ – Services of electronic whole sale agents and brokers, – Services of whole sale auctioning houses.",
+              "rate": "9",
+              "is_omitted": false
+            },
+            {
+              "sno": "6",
+              "tariff_item": "Heading 9962",
+              "description": "Services in retail trade. Explanation- This service does not include sale or purchase of goods",
+              "rate": "9",
+              "is_omitted": false
+            },
+            {
+              "sno": "7",
+              "tariff_item": "Heading 9963",
+              "description": "(Accommodation, food and beverage services) (i) Supply, by way of or as part of any service, of goods, being food or any other article for human consumption or any drink, provided by a restaurant, eating joint including mess, canteen, whether for consumption on or away from the premises where such food or any other article for human consumption or drink is supplied, other than those located in the premises of",
+              "rate": "",
+              "is_omitted": false
+            },
+            {
+              "sno": "8",
+              "tariff_item": "Heading 9964",
+              "description": "(Passenger transport services) (i) Transport of passengers, with or without accompanied belongings, by rail in first class or air conditioned coach. without excluding any discount offered on the published charges for such unit.” (ii) Transport of passengers, with or without accompanied belongings by- (a) air conditioned contract carriage other than motorcab; (b) air conditioned stage carriage; (c) radio taxi.",
+              "rate": "2.5",
+              "is_omitted": false
+            },
+            {
+              "sno": "9",
+              "tariff_item": "Heading 9965",
+              "description": "(Goods transport services) (i) Transport of goods by rail (other than services specified at item no. (iv)). (ii) Transport of goods in a vessel.",
+              "rate": "2.5",
+              "is_omitted": false
+            },
+            {
+              "sno": "10",
+              "tariff_item": "Heading 9966",
+              "description": "(Rental services of the service recipient. transport vehicles) (i) Renting of any motor vehicle designed to carry passengers where the cost of fuel is included in the consideration charged from",
+              "rate": "2.5",
+              "is_omitted": false
+            },
+            {
+              "sno": "11",
+              "tariff_item": "Heading 9967",
+              "description": "(Supporting services in use). (i) Services of goods transport agency (GTA) in relation to transportation of goods (including used household goods for personal Explanation.- “goods transport agency” means any person who provides service in relation to transport of goods by road and issues consignment note, by whatever name called. [(iii) Rental services of transport vehicles with or without operators, other than (i) and (ii) above. [(i) Services of goods transport agency (GTA) in relation to transportation of goods",
+              "rate": "2.5",
+              "is_omitted": false
+            },
+            {
+              "sno": "12",
+              "tariff_item": "Heading 9968",
+              "description": "Postal and courier services.",
+              "rate": "",
+              "is_omitted": false
+            },
+            {
+              "sno": "13",
+              "tariff_item": "Heading 9969",
+              "description": "Electricity, gas, water and other distribution services.",
+              "rate": "",
+              "is_omitted": false
+            },
+            {
+              "sno": "14",
+              "tariff_item": "Section 7",
+              "description": "Financial and related services; real estate services; and rental and leasing services.",
+              "rate": "",
+              "is_omitted": false
+            },
+            {
+              "sno": "15",
+              "tariff_item": "Heading 9971",
+              "description": "(Financial and Explanation.- related services) (i) Services provided by a foreman of a chit fund in relation to chit. (a) \"chit\" means a transaction whether called chit, chit fund, chitty, kuri, or by whatever name by or under which a person enters into an agreement with a specified number of persons that every one of them shall subscribe a certain sum of money (or a certain quantity of grain instead) by way of",
+              "rate": "6",
+              "is_omitted": false
+            },
+            {
+              "sno": "16",
+              "tariff_item": "Heading 9972",
+              "description": "(i) Services by the Central Government, State Government, Union territory or local authority to governmental authority or government entity, by way of lease of land. (ii) Supply of land or undivided share of land by way of lease or sub lease where such supply is a part of composite supply of construction of flats, etc. specified in the entry in column (3), against serial number 3, at item [(i), (ia), (ib), (ic), (id), (ie) and (if)]71. Provided that nothing contained in this entry shall apply to an amount charged for such lease and sub-lease in excess of one third of the total amount charged for the said",
+              "rate": "Nil",
+              "is_omitted": false
+            },
+            {
+              "sno": "17",
+              "tariff_item": "Heading 9973",
+              "description": "(Leasing or Intellectual Property (IP) right in respect of (i) Temporary or permanent transfer or permitting the use or enjoyment of goods other than Information Technology permitting the use or enjoyment of Intellectual Property (IP) right in respect of Information Technology software. [Please refer to Explanation no. (v)] (iii) Transfer of the right to use any goods for any purpose (whether or not for a specified period) for cash, deferred payment or other valuable consideration.",
+              "rate": "6",
+              "is_omitted": false
+            },
+            {
+              "sno": "18",
+              "tariff_item": "Section 8",
+              "description": "Business and Production Services",
+              "rate": "",
+              "is_omitted": false
+            },
+            {
+              "sno": "19",
+              "tariff_item": "Heading 9981",
+              "description": "Research and development services.",
+              "rate": "9",
+              "is_omitted": false
+            },
+            {
+              "sno": "20",
+              "tariff_item": "Heading 9982",
+              "description": "Legal and accounting services.",
+              "rate": "9",
+              "is_omitted": false
+            },
+            {
+              "sno": "21",
+              "tariff_item": "Heading 9983",
+              "description": "(Other professional, technical and business services) (i) Selling of space for advertisement in print media. (ii) Other professional, technical and business services other than (i) above [and serial number 38 below]78.",
+              "rate": "2.5",
+              "is_omitted": false
+            },
+            {
+              "sno": "22",
+              "tariff_item": "Heading 9984",
+              "description": "(Telecommunic ations, broadcasting and information supply (i) Supply consisting only of e-book. Explanation.- For the purposes of this notification, “e-books” means an electronic version of a printed book (falling under tariff item 4901 in the First Schedule to the Customs Tariff Act, 1975 (51 of 1975)) supplied online which can be read on a services) computer or a hand held device. (ii) Telecommunications, broadcasting and information supply services other than (i) above.",
+              "rate": "2.5",
+              "is_omitted": false
+            },
+            {
+              "sno": "23",
+              "tariff_item": "Heading 9985",
+              "description": "(Support services) (i) Supply of tour operators services. Explanation.- \"tour operator\" means any person engaged in the business of planning, scheduling, organizing, arranging tours (which may include arrangements for accommodation, sightseeing or other similar other than (i), (ii), (iii), (iv), (v), (vi) and (vii) above. of like goods involving transfer of title in goods information supply services. services) by any mode of transport, and includes any person engaged in the business of operating tours.",
+              "rate": "2.5",
+              "is_omitted": false
+            },
+            {
+              "sno": "24",
+              "tariff_item": "Heading 9986",
+              "description": "(i) Support services to agriculture, forestry, fishing, animal husbandry. Explanation. – “Support services to agriculture, forestry, fishing, animal husbandry” mean - (i) Services relating to cultivation of plants and rearing of all life forms of animals, except the rearing of horses, for food, fibre, fuel, raw material or other similar products or agricultural produce by way of— (a) agricultural operations directly related to production of any agricultural produce including cultivation, harvesting, threshing, plant protection or testing; (b) supply of farm labour;",
+              "rate": "Nil",
+              "is_omitted": false
+            },
+            {
+              "sno": "25",
+              "tariff_item": "Heading 9987",
+              "description": "(i) Services by way of house-keeping, such as plumbing, carpentering, etc. where the person supplying such service through electronic commerce operator is not liable for registration under sub-section (1) of section 22 of the Central Goods and Services Tax Act, 2017. (ii) Maintenance, repair and installation (except construction) services, other than (i) above [and serial number 38 below]86.",
+              "rate": "2.5",
+              "is_omitted": false
+            },
+            {
+              "sno": "26",
+              "tariff_item": "Heading 9988",
+              "description": "(Manufacturing services on physical inputs (goods) owned (i) Services by way of job work in relation to- (a) Printing of newspapers; [(b) Textiles and textile products falling under Chapter 50 to 63 in the First Schedule to the Customs Tariff Act, 1975 (51of 1975)]88; [(c) all products falling under Chapter 71 in the First Schedule to the Customs Tariff Act, 1975 (51of 1975);]89 (d) Printing of books (including Braille books), journals and periodicals; [(da) printing of all goods falling under Chapter 48 or 49, which attract CGST @ 2.5per cent. or Nil]90 (e) Processing of hides, skins and leather",
+              "rate": "2.5",
+              "is_omitted": false
+            },
+            {
+              "sno": "27",
+              "tariff_item": "Heading 9989",
+              "description": "(i) Services by way of printing of all goods falling under Chapter 48 or 49 [including newspapers, books (including Braille books), journals and periodicals], which attract CGST @ 6 per cent. or 2.5per cent. or Nil, where only content is supplied by the publisher and the physical inputs including paper used for printing belong to the printer. [(ii) Other manufacturing services; publishing, printing and reproduction services; materials recovery services, other than (i) above.",
+              "rate": "6",
+              "is_omitted": false
+            },
+            {
+              "sno": "28",
+              "tariff_item": "Section 9",
+              "description": "Community, Social and Personal Services and other miscellaneous services",
+              "rate": "",
+              "is_omitted": false
+            },
+            {
+              "sno": "29",
+              "tariff_item": "Heading 9991",
+              "description": "Public administration and other services provided to the community as a whole; compulsory social security services.",
+              "rate": "9",
+              "is_omitted": false
+            },
+            {
+              "sno": "30",
+              "tariff_item": "Heading 9992",
+              "description": "Education services.",
+              "rate": "9",
+              "is_omitted": false
+            },
+            {
+              "sno": "31",
+              "tariff_item": "Heading 9993",
+              "description": "Human health and social care services.",
+              "rate": "9",
+              "is_omitted": false
+            },
+            {
+              "sno": "32",
+              "tariff_item": "Heading 9994",
+              "description": "(i) Services by way of treatment of effluents by a Common Effluent Treatment Plant. (ii) Sewage and waste collection, treatment and disposal and other environmental protection services other than (i) above. (ii)” only content is supplied by the publisher and the physical inputs including paper used for printing belong to the printer.” environmental protection services",
+              "rate": "6",
+              "is_omitted": false
+            },
+            {
+              "sno": "33",
+              "tariff_item": "Heading 9995",
+              "description": "Services of membership organisations. (i) Services by way of admission or access to",
+              "rate": "9",
+              "is_omitted": false
+            },
+            {
+              "sno": "34",
+              "tariff_item": "Heading 9996",
+              "description": "(Recreational, cultural and sporting services) circus, Indian classical dance including folk dance, theatrical performance, drama [or planetarium]106. (ii) Services by way of admission to exhibition of cinematograph films where price of admission ticket is one hundred rupees or less. [(iia) Services by way of admission to exhibition of cinematograph films where price of admission ticket is above one hundred rupees. [(iii) Services by way of admission to amusement parks including theme parks,",
+              "rate": "9",
+              "is_omitted": false
+            },
+            {
+              "sno": "35",
+              "tariff_item": "Heading 9997",
+              "description": "Other services (washing, cleaning and dyeing services; beauty and physical well-being services; and other miscellaneous services including services nowhere else classified). League and the like.",
+              "rate": "9",
+              "is_omitted": false
+            },
+            {
+              "sno": "36",
+              "tariff_item": "Heading 9998",
+              "description": "Domestic services.",
+              "rate": "9",
+              "is_omitted": false
+            },
+            {
+              "sno": "37",
+              "tariff_item": "Heading 9999",
+              "description": "Services provided by extraterritorial organisations and bodies.",
+              "rate": "9",
+              "is_omitted": false
+            },
+            {
+              "sno": "38",
+              "tariff_item": "Heading 9954 or 9983 or 9987",
+              "description": "Service by way of construction or engineering or installation or other technical services, provided in relation of setting up of following, - (a) Bio-gas plant (b) Solar power based devices (c) Solar power generating system (d) Wind mills, Wind Operated Electricity Generator (WOEG) (e) Waste to energy plants / devices (f) Ocean waves/tidal waves energy devices/plants Explanation:- This entry shall be read in conjunction with serial number 234 of Schedule I of the notification No. 1/2017-",
+              "rate": "9",
+              "is_omitted": false
+            },
+            {
+              "sno": "39",
+              "tariff_item": "Chapter 99",
+              "description": "Supply of services other than services by way of grant of development rights, long term lease of land (against upfront payment in the form of premium, salami, development charges etc.) or FSI (including additional FSI) by an unregistered person to a promoter for construction of a project on which tax is payable by the recipient of the services under sub- section 4 of section 9 of the Central Goods and Services Tax Act, 2017 (12 of 2017), as prescribed in notification No. 07 / 2019- Central Tax (Rate), dated 29th March, 2019, published in Gazette of India vide G.S.R. No. _, dated 29th March, 2019. Explanation. -",
+              "rate": "9",
+              "is_omitted": false
+            }
+          ]
+        }
+      }
+    }
+  }
+}
