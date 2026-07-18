@@ -7,6 +7,7 @@ source of truth; FalkorDB and LanceDB are optional serving indexes.
 from __future__ import annotations
 
 import json
+import hashlib
 import os
 import re
 import urllib.request
@@ -21,6 +22,10 @@ from .search_index import build_search_records, read_search_index, search_record
 
 DEFAULT_EMBEDDING_ENDPOINT = "http://127.0.0.1:1234/v1"
 DEFAULT_EMBEDDING_MODEL = "text-embedding-nomic-embed-text-v1.5"
+
+# Structured canonical IDs that have materialized version history.
+# Used by _fast_exists() to skip the ~35s corpus XML scan for section/rule queries.
+_STRUCTURED_PROVISION_RE = re.compile(r"^/in/union/(acts|rules)/[^/]+/(section|rule)/")
 
 
 def _clean_text(value: str, limit: int = 0) -> str:
@@ -101,6 +106,12 @@ class NyayaToolService:
         self._incoming: dict[str, list[dict[str, Any]]] | None = None
         self._falkor_graph: Any | None = None
         self._lance_table: Any | None = None
+        # Per-process caches for immutable version_history artifacts. The data
+        # files only change on explicit regeneration; restart the process (or
+        # call invalidate_node_versions_cache for node_versions.jsonl) after
+        # regenerating. See AGENTS.md "Cache and restart conventions".
+        self._event_index_cache: dict[Path, dict[str, dict[str, Any]]] = {}
+        self._json_cache: dict[Path, dict[str, Any]] = {}
         self._provision_lance_table: Any | None = None
 
     @classmethod
@@ -380,6 +391,37 @@ class NyayaToolService:
             to_date=to_date,
         )
 
+    def query_law_as_of_date(self, act: str, section: str, date: str) -> dict[str, Any]:
+        """Resolve act + section + date into the same dated provision result used by MCP."""
+        citation = f"section {section} {act}"
+        resolved = self.resolve_citation(citation, limit=5)
+        candidates = resolved.get("candidates", [])
+        if not candidates:
+            return {
+                "status": "not_found",
+                "citation": citation,
+                "date": date,
+                "message": f"Could not resolve '{citation}' to a canonical provision.",
+                "verification": self._failed_verification("citation_not_resolved"),
+            }
+
+        existing = [candidate for candidate in candidates if candidate.get("exists")]
+        if len(existing) > 1:
+            return {
+                "status": "ambiguous_citation",
+                "citation": citation,
+                "date": date,
+                "candidates": existing,
+                "message": f"'{citation}' resolved to multiple canonical provisions.",
+                "verification": self._failed_verification("ambiguous_citation"),
+            }
+        selected = existing[0] if existing else candidates[0]
+        canonical_id = selected["canonical_id"]
+        result = self.get_provision_as_of_date(canonical_id, date=date)
+        result["citation"] = citation
+        result["resolved_canonical_id"] = canonical_id
+        return result
+
     def get_provision_as_of_date(
         self,
         canonical_id: str,
@@ -401,6 +443,7 @@ class NyayaToolService:
                 "date": date,
                 "text": "",
                 "message": f"Invalid date '{date}'. Expected YYYY-MM-DD format.",
+                "verification": self._failed_verification("invalid_date"),
             }
 
         from .version_reconstruct import reconstruct_component
@@ -419,6 +462,10 @@ class NyayaToolService:
         amendments: list[dict[str, Any]] = []
         coverage = "complete"
         coverage_gaps: list[dict[str, Any]] = []
+        reconciliation_gaps: list[dict[str, Any]] = []
+        confidence_tier = "unknown"
+        confidence_detail: dict[str, Any] = {}
+        comparison: dict[str, Any] = {}
         warnings: list[str] = []
         if result.get("status") == "ok":
             chain_data = self.list_amendments(component_id, target_work=target_work)
@@ -431,26 +478,52 @@ class NyayaToolService:
             # Filter to only gaps affecting THIS component — other sections' gaps
             # in the same work should not affect this provision's coverage status.
             try:
-                cmp = self.compare_versions(component_id, from_date=version.get("applicability_start") or version.get("valid_from"), to_date=date)
-                all_gaps = cmp.get("coverage_gaps", [])
-                coverage_gaps = [
-                    g for g in all_gaps
-                    if component_id in str(g.get("target", {}).get("component_id", "")) or component_id in str(g.get("skip_reason", ""))
-                ]
+                comparison = self.compare_versions(
+                    component_id,
+                    from_date=version.get("applicability_start") or version.get("valid_from"),
+                    to_date=date,
+                )
+                all_gaps = comparison.get("coverage_gaps", [])
+                coverage_gaps = [g for g in all_gaps if self._gap_applies_to_component(g, component_id)]
+                reconciliation_gaps = comparison.get("reconciliation_gaps", [])
+                confidence_tier = comparison.get("confidence_tier", "unknown")
+                confidence_detail = comparison.get("confidence_detail", {})
                 if coverage_gaps:
                     coverage = "incomplete"
-                    coverage_gaps = coverage_gaps
+                elif reconciliation_gaps:
+                    coverage = "incomplete"
+                elif comparison.get("status") != "ok":
+                    coverage = "incomplete"
                 else:
-                    coverage = cmp.get("coverage", "complete")
-                warnings = cmp.get("warnings", [])
+                    coverage = "complete"
+                warnings = comparison.get("warnings", []) if coverage != "complete" else []
             except Exception:
                 pass
 
         raw_status = result.get("status", "not_found")
+        verification = self._verification_for_result(
+            component_id=component_id,
+            date=date,
+            raw_status=raw_status,
+            text=result.get("text", ""),
+            version=version,
+            source_basis=version.get("source_basis", {}),
+            coverage=coverage,
+            coverage_gaps=coverage_gaps,
+            reconciliation_gaps=reconciliation_gaps,
+            confidence_tier=confidence_tier,
+            confidence_detail=confidence_detail,
+            comparison=comparison,
+            target_work=target_work,
+        )
         # When reconstruction succeeded but coverage is incomplete, downgrade
         # the public status so callers do not mistake an inexact position-of-law
         # for a court-ready one.
-        if raw_status == "ok" and coverage != "complete":
+        if raw_status == "ok" and verification.get("verdict") in {"exact", "exact_with_formatting_debt"}:
+            effective_status = "ok"
+        elif raw_status == "ok" and verification.get("verdict") == "failed_verification":
+            effective_status = "failed_verification"
+        elif raw_status == "ok":
             effective_status = "ok_with_gaps"
         else:
             effective_status = raw_status
@@ -470,8 +543,369 @@ class NyayaToolService:
             "amendments": amendments,
             "coverage": coverage,
             "coverage_gaps": coverage_gaps,
+            "reconciliation_gaps": reconciliation_gaps,
+            "confidence_tier": confidence_tier,
+            "confidence_detail": confidence_detail,
             "warnings": warnings,
+            "verification": verification,
         }
+
+    def build_query_proof_pack(self, *, act: str, section: str, date: str) -> dict[str, Any]:
+        result = self.query_law_as_of_date(act, section, date)
+        text = result.get("text", "")
+        verification = result.get("verification", {})
+        return {
+            "request": {"act": act, "section": section, "date": date},
+            "resolved_canonical_id": result.get("resolved_canonical_id") or result.get("canonical_id"),
+            "returned_text_hash": result.get("text_sha256") or hashlib.sha256(text.encode("utf-8")).hexdigest(),
+            "version_id": result.get("version_id"),
+            "applicability_range": {
+                "start": result.get("applicability_start"),
+                "end": result.get("applicability_end"),
+            },
+            "event_chain": result.get("event_chain", []),
+            "source_basis": result.get("source_basis", {}),
+            "source_span_verification": (verification.get("checks") or {}).get("source_span_hash", {}),
+            "official_source_refs": (verification.get("checks") or {}).get("official_source_citation", {}).get("refs", []),
+            "coverage_summary": {
+                "coverage": result.get("coverage"),
+                "coverage_gaps": result.get("coverage_gaps", []),
+            },
+            "confidence_summary": {
+                "tier": result.get("confidence_tier"),
+                "detail": result.get("confidence_detail", {}),
+            },
+            "reconciliation_summary": {
+                "gaps": result.get("reconciliation_gaps", []),
+            },
+            "mcp_transcript": [
+                {
+                    "role": "client",
+                    "tool": "query_law_as_of_date",
+                    "arguments": {"act": act, "section": section, "date": date},
+                },
+                {
+                    "role": "server",
+                    "tool": "query_law_as_of_date",
+                    "result": result,
+                },
+            ],
+            "final_verdict": verification.get("verdict", "failed_verification"),
+            "verification": verification,
+        }
+
+    def _failed_verification(self, reason: str) -> dict[str, Any]:
+        return {
+            "verdict": "failed_verification",
+            "checks": {},
+            "blocking_reasons": [reason],
+        }
+
+    def _verification_for_result(
+        self,
+        *,
+        component_id: str,
+        date: str,
+        raw_status: str,
+        text: str,
+        version: dict[str, Any],
+        source_basis: dict[str, Any],
+        coverage: str,
+        coverage_gaps: list[dict[str, Any]],
+        reconciliation_gaps: list[dict[str, Any]],
+        confidence_tier: str,
+        confidence_detail: dict[str, Any],
+        comparison: dict[str, Any],
+        target_work: str | None,
+    ) -> dict[str, Any]:
+        checks: dict[str, Any] = {}
+        blocking: list[str] = []
+
+        if raw_status != "ok":
+            return self._failed_verification(raw_status)
+
+        checks["text_hash"] = self._text_hash_check(text, str(version.get("text_sha256") or ""))
+        checks["source_span_hash"] = self._source_span_check(
+            component_id=component_id,
+            event_chain=list(version.get("event_chain") or []),
+            source_basis=source_basis,
+            target_work=target_work,
+        )
+        checks["coverage_gap"] = {
+            "status": "passed" if coverage == "complete" and not coverage_gaps else "failed",
+            "coverage": coverage,
+            "gap_count": len(coverage_gaps),
+            "gaps": coverage_gaps,
+        }
+        checks["reconciliation"] = {
+            "status": "passed" if not reconciliation_gaps else "failed",
+            "gap_count": len(reconciliation_gaps),
+            "gaps": reconciliation_gaps,
+        }
+        checks["confidence_tier"] = {
+            "status": "passed" if confidence_tier in {"A", "B"} and not confidence_detail.get("tier_blockers") else "failed",
+            "tier": confidence_tier,
+            "tier_blockers": confidence_detail.get("tier_blockers", []),
+            "detail": confidence_detail,
+        }
+        checks["official_source_citation"] = self._official_source_citation_check(
+            component_id=component_id,
+            event_chain=list(version.get("event_chain") or []),
+            source_basis=source_basis,
+            target_work=target_work,
+        )
+        checks["manifest_consistency"] = self._manifest_consistency_check(component_id, target_work=target_work)
+
+        for name, check in checks.items():
+            if check.get("status") == "failed":
+                blocking.append(name)
+        if comparison.get("status") not in {None, "", "ok"}:
+            blocking.append(f"comparison_status:{comparison.get('status')}")
+
+        formatting_debt = self._has_formatting_debt(text)
+        checks["formatting"] = {
+            "status": "warning" if formatting_debt else "passed",
+            "formatting_debt": formatting_debt,
+        }
+
+        if blocking:
+            verdict = "ok_with_gaps"
+        elif formatting_debt:
+            verdict = "exact_with_formatting_debt"
+        else:
+            verdict = "exact"
+
+        return {
+            "verdict": verdict,
+            "checks": checks,
+            "blocking_reasons": blocking,
+        }
+
+    def _text_hash_check(self, text: str, expected_hash: str) -> dict[str, Any]:
+        actual_hash = hashlib.sha256(text.encode("utf-8")).hexdigest() if text else ""
+        return {
+            "status": "passed" if expected_hash and actual_hash == expected_hash else "failed",
+            "expected_sha256": expected_hash,
+            "actual_sha256": actual_hash,
+        }
+
+    def _source_span_check(
+        self,
+        *,
+        component_id: str,
+        event_chain: list[str],
+        source_basis: dict[str, Any],
+        target_work: str | None,
+    ) -> dict[str, Any]:
+        if not event_chain:
+            return {
+                "status": "passed" if source_basis.get("type") == "baseline_corpus" else "failed",
+                "checked_event_ids": [],
+                "missing_event_ids": [],
+                "unverified_event_ids": [],
+                "mismatched_event_ids": [],
+                "baseline_source": source_basis,
+            }
+
+        events = self._event_index_for_component(component_id, target_work=target_work)
+        checked: list[str] = []
+        missing: list[str] = []
+        unverified: list[str] = []
+        mismatched: list[str] = []
+        source_basis_event = source_basis.get("event_id")
+        source_basis_hash = ((source_basis.get("source_span") or {}).get("text_hash") or "")
+        for event_id in event_chain:
+            event = events.get(event_id)
+            if not event:
+                missing.append(event_id)
+                continue
+            span = (event.get("evidence") or {}).get("source_span") or {}
+            span_hash = span.get("text_hash") or ""
+            validation = event.get("validation") or {}
+            checked.append(event_id)
+            span_verified = bool(validation.get("source_span_verified"))
+            deterministic_verified = bool(validation.get("deterministic")) and validation.get("source_hash") == span_hash
+            if not span_hash or not (span_verified or deterministic_verified):
+                unverified.append(event_id)
+            if event_id == source_basis_event and source_basis_hash and span_hash and source_basis_hash != span_hash:
+                mismatched.append(event_id)
+        status = "passed" if not missing and not unverified and not mismatched else "failed"
+        return {
+            "status": status,
+            "checked_event_ids": checked,
+            "missing_event_ids": missing,
+            "unverified_event_ids": unverified,
+            "mismatched_event_ids": mismatched,
+            "source_basis_event_id": source_basis_event,
+        }
+
+    def _official_source_citation_check(
+        self,
+        *,
+        component_id: str,
+        event_chain: list[str],
+        source_basis: dict[str, Any],
+        target_work: str | None,
+    ) -> dict[str, Any]:
+        refs: list[dict[str, Any]] = []
+        if not event_chain:
+            refs.append(
+                {
+                    "type": source_basis.get("type", "baseline_corpus"),
+                    "path": source_basis.get("path"),
+                    "base_as_of": source_basis.get("base_as_of"),
+                }
+            )
+            return {"status": "passed" if source_basis else "failed", "refs": refs}
+
+        events = self._event_index_for_component(component_id, target_work=target_work) if component_id.startswith("/") else {}
+        if not events:
+            basis_event = str(source_basis.get("event_id") or "")
+            events = self._event_index_for_event_id(basis_event, target_work=target_work) if basis_event else {}
+        missing: list[str] = []
+        for event_id in event_chain:
+            event = events.get(event_id)
+            if not event:
+                missing.append(event_id)
+                continue
+            source = event.get("source") or {}
+            evidence = event.get("evidence") or {}
+            ref = {
+                "event_id": event_id,
+                "source_document_id": source.get("document_id") or evidence.get("source_document_id"),
+                "instrument_number": source.get("instrument_number"),
+                "source_url": source.get("source_url"),
+                "record_id": source.get("record_id"),
+                "source_span": evidence.get("source_span") or {},
+            }
+            if not (ref["source_document_id"] or ref["instrument_number"] or ref["source_url"]):
+                missing.append(event_id)
+            refs.append(ref)
+        return {
+            "status": "passed" if not missing else "failed",
+            "refs": refs,
+            "missing_event_ids": missing,
+        }
+
+    def _manifest_consistency_check(self, component_id: str, *, target_work: str | None) -> dict[str, Any]:
+        version_dir, _resolved_work = self._version_dir_for_component(component_id, target_work=target_work)
+        manifest = self._read_json(version_dir / "materialization_manifest.json")
+        coverage = self._read_json(version_dir / "coverage_gaps.json")
+        failures: list[str] = []
+        paths: dict[str, str] = {}
+        for key in ("node_versions", "coverage_gaps"):
+            value = str(manifest.get(key) or "")
+            paths[key] = value
+            if not value:
+                failures.append(f"missing_manifest_path:{key}")
+                continue
+            if value.startswith("/tmp/") or "/tmp/" in value:
+                failures.append(f"tmp_manifest_path:{key}")
+            if not Path(value).exists():
+                failures.append(f"missing_manifest_artifact:{key}")
+        manifest_gap_count = manifest.get("coverage_gap_count")
+        coverage_gap_count = coverage.get("gap_count", len(coverage.get("gaps", [])))
+        actual_gap_count = len(coverage.get("gaps", []))
+        if manifest_gap_count != actual_gap_count or coverage_gap_count != actual_gap_count:
+            failures.append("coverage_gap_count_mismatch")
+        return {
+            "status": "passed" if not failures else "failed",
+            "version_dir": str(version_dir),
+            "paths": paths,
+            "manifest_coverage_gap_count": manifest_gap_count,
+            "coverage_gap_count": coverage_gap_count,
+            "actual_gap_count": actual_gap_count,
+            "failures": failures,
+        }
+
+    def _event_index_for_component(self, component_id: str, *, target_work: str | None) -> dict[str, dict[str, Any]]:
+        version_dir, _resolved_work = self._version_dir_for_component(component_id, target_work=target_work)
+        return self._event_index_for_version_dir(version_dir)
+
+    def _event_index_for_event_id(self, event_id: str, *, target_work: str | None) -> dict[str, dict[str, Any]]:
+        if target_work:
+            version_dir, _resolved_work = self._version_dir_for_component(target_work, target_work=target_work)
+            return self._event_index_for_version_dir(version_dir)
+        for path in Path("derived/version_history").glob("*/fixed_amendment_events.jsonl"):
+            events = self._read_event_index(path)
+            if event_id in events:
+                return events
+        return {}
+
+    def _event_index_for_version_dir(self, version_dir: Path) -> dict[str, dict[str, Any]]:
+        manifest = self._read_json(version_dir / "materialization_manifest.json")
+        candidates = []
+        if manifest.get("events_path"):
+            candidates.append(Path(str(manifest["events_path"])))
+        candidates.extend(
+            [
+                version_dir / "fixed_amendment_events.jsonl",
+                version_dir / "merged_amendment_events.jsonl",
+                version_dir / "amendment_events_reviewed.jsonl",
+                Path("derived/version_history/amendment_events_reviewed.jsonl"),
+            ]
+        )
+        for path in candidates:
+            events = self._read_event_index(path)
+            if events:
+                return events
+        return {}
+
+    def _read_event_index(self, path: Path) -> dict[str, dict[str, Any]]:
+        cached = self._event_index_cache.get(path)
+        if cached is not None:
+            return cached
+        if not path.exists():
+            return {}
+        events: dict[str, dict[str, Any]] = {}
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if not line.strip():
+                continue
+            try:
+                event = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            event_id = str(event.get("event_id") or "")
+            if event_id:
+                events[event_id] = event
+        self._event_index_cache[path] = events
+        return events
+
+    def _version_dir_for_component(self, canonical_id: str, *, target_work: str | None) -> tuple[Path, str | None]:
+        from .version_compare import resolve_version_dir
+
+        return resolve_version_dir(canonical_id, target_work=target_work)
+
+    def _read_json(self, path: Path) -> dict[str, Any]:
+        cached = self._json_cache.get(path)
+        if cached is not None:
+            return cached
+        if not path.exists():
+            return {}
+        try:
+            result = json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            return {}
+        self._json_cache[path] = result
+        return result
+
+    def _gap_applies_to_component(self, gap: dict[str, Any], component_id: str) -> bool:
+        target = gap.get("target") or {}
+        candidates = [
+            str(target.get("component_id") or ""),
+            str(target.get("anchor_component_id") or ""),
+        ]
+        for candidate in candidates:
+            if not candidate:
+                continue
+            if candidate == component_id:
+                return True
+            if candidate.startswith(component_id + "/") or component_id.startswith(candidate + "/"):
+                return True
+        return False
+
+    def _has_formatting_debt(self, text: str) -> bool:
+        return "\u200b" in text or bool(re.search(r"\b\d+\s*\[(?:\*\*\*\*|[^\]]+)\]", text))
 
     def _component_version_rows(
         self,
@@ -593,24 +1027,64 @@ class NyayaToolService:
 
     def _candidate(self, canonical_id: str, reason: str, search_result: dict[str, Any] | None = None) -> dict[str, Any]:
         normalized = normalize_query_id(canonical_id)
-        lookup = self._corpus_lookup().get(normalized)
-        item = {
+        item: dict[str, Any] = {
             "canonical_id": normalized,
-            "exists": bool(lookup),
+            "exists": False,
             "reason": reason,
         }
-        if lookup:
-            payload = lookup.get("provision") or lookup.get("document") or {}
-            item.update(
-                {
-                    "title": payload.get("title", ""),
-                    "document_id": payload.get("document_id", payload.get("canonical_id", "")),
-                    "document_type": payload.get("document_type", ""),
-                }
-            )
+        # Fast path: for structured section/rule canonicals with materialized
+        # version history, establish existence from version rows rather than
+        # scanning the entire corpus XML (which takes ~35s on first call).
+        # Returns None for forms/documents/unknown works -> slow path below.
+        fast_exists = self._fast_exists(normalized)
+        if fast_exists is not None:
+            item["exists"] = fast_exists
+            # Enrich with title/document_type only if the corpus index is
+            # already built (free); never trigger the 35s scan for enrichment.
+            if self._lookup is not None:
+                self._enrich_candidate_from_lookup(item, normalized)
+        else:
+            lookup = self._corpus_lookup().get(normalized)
+            item["exists"] = bool(lookup)
+            if lookup:
+                self._enrich_candidate_from_lookup(item, normalized)
         if search_result:
             item["search"] = search_result
         return item
+
+    def _enrich_candidate_from_lookup(self, item: dict[str, Any], normalized: str) -> None:
+        lookup = self._lookup.get(normalized) if self._lookup is not None else None
+        if not lookup:
+            return
+        payload = lookup.get("provision") or lookup.get("document") or {}
+        item.setdefault("title", payload.get("title", ""))
+        item.setdefault("document_id", payload.get("document_id", payload.get("canonical_id", "")))
+        item.setdefault("document_type", payload.get("document_type", ""))
+
+    def _fast_exists(self, canonical_id: str) -> bool | None:
+        """Fast existence check via materialized version rows.
+
+        Returns True if version rows exist for this canonical, False if the
+        canonical resolves to a version directory but has no rows, or None if
+        the canonical is not a structured provision tracked by version history
+        (forms, documents, unknown works) — in which case callers fall back to
+        the full corpus lookup.
+
+        This avoids the ~35-second ``build_corpus_lookup`` scan for structured
+        section/rule queries, which are the common MCP acquisition path.
+        """
+        if not _STRUCTURED_PROVISION_RE.match(canonical_id):
+            return None
+        try:
+            from .version_compare import read_node_versions
+            resolved_dir, _ = self._version_dir_for_component(canonical_id, target_work=None)
+            node_versions_path = resolved_dir / "node_versions.jsonl"
+            if not node_versions_path.exists():
+                return None
+            rows = read_node_versions(node_versions_path)
+            return any(row.get("component_id") == canonical_id for row in rows)
+        except Exception:
+            return None
 
     def _related_payload(self, canonical_id: str, reason: str, score: float) -> dict[str, Any]:
         lookup = self._corpus_lookup().get(canonical_id) or {}

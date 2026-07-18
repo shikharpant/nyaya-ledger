@@ -3,8 +3,10 @@ services:
     image: falkordb/falkordb:latest
     container_name: git-for-law-falkordb
     ports:
-      - "6379:6379"
-      - "3010:3000"
+      - "127.0.0.1:6379:6379"
+      - "100.74.52.37:6379:6379"
+      - "127.0.0.1:3010:3000"
+      - "100.74.52.37:3010:3000"
     volumes:
       - falkordb_data:/data
     restart: unless-stopped
@@ -13,8 +15,10 @@ services:
     image: neo4j:5.15.0-community
     container_name: git-for-law-neo4j
     ports:
-      - "7474:7474"  # HTTP
-      - "7687:7687"  # Bolt
+      - "127.0.0.1:7474:7474"       # HTTP, local
+      - "100.74.52.37:7474:7474"    # HTTP, Tailscale
+      - "127.0.0.1:7687:7687"       # Bolt, local
+      - "100.74.52.37:7687:7687"    # Bolt, Tailscale
     environment:
       - NEO4J_AUTH=neo4j/gitforlaw123
       - NEO4J_PLUGINS=["apoc"]

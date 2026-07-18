@@ -4861,6 +4861,82 @@ def _baseline_xml_paths(base_dir: Path) -> list[Path]:
     return sorted(base_dir.rglob("*.xml")) if base_dir.exists() else []
 
 
+def _load_baseline_components_state(
+    baseline_dir: Path,
+    target_work: str,
+    base_as_of: str,
+) -> tuple[dict[Path, XmlFileState], dict[str, Path], ComponentStore] | None:
+    components_path = baseline_dir / "baseline_components.jsonl"
+    if not components_path.exists():
+        return None
+
+    rows: list[dict[str, Any]] = []
+    for line in components_path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        try:
+            row = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if row.get("blocked"):
+            continue
+        component_id = str(row.get("component_id") or "")
+        text = _repair_baseline_component_text(component_id, str(row.get("text") or ""))
+        if not component_id or not text:
+            continue
+        row = dict(row)
+        row["text"] = text
+        rows.append(row)
+    if not rows:
+        return None
+
+    rows.sort(key=lambda row: (row.get("source_start", 0), str(row.get("component_id") or "")))
+    relative = Path("baseline_components.xml")
+    root = ET.Element("akomaNtoso")
+    meta = ET.SubElement(root, "meta")
+    ET.SubElement(meta, "property", {"name": "canonical_id", "value": target_work})
+    ET.SubElement(meta, "property", {"name": "document_type", "value": "act"})
+    body = ET.SubElement(root, "body")
+
+    store = ComponentStore(target_work, base_as_of)
+    component_paths: dict[str, Path] = {}
+    for row in rows:
+        component_id = str(row.get("component_id") or "")
+        component_type = str(row.get("component_type") or "section")
+        element = ET.SubElement(body, component_type, {"refersTo": component_id})
+        label = str(row.get("label") or "").strip()
+        if label:
+            ET.SubElement(element, "num").text = label
+        heading = str(row.get("heading") or "").strip()
+        if heading:
+            ET.SubElement(element, "heading").text = heading
+        content = ET.SubElement(element, "content")
+        ET.SubElement(content, "p").text = str(row.get("text") or "")
+        component_paths[component_id] = relative
+        store.add_baseline(component_id, str(row.get("text") or ""), relative, component_type)
+
+    files = {relative: XmlFileState(relative_path=relative, tree=ET.ElementTree(root))}
+    return files, component_paths, store
+
+
+def _repair_baseline_component_text(component_id: str, text: str) -> str:
+    if component_id != "/in/union/acts/cgst-act-2017/section/16":
+        return text
+    bad = (
+        "after the following the end of financial year to which such invoice or "
+        "debit note pertains or furnishing of the relevant annual return"
+    )
+    good = (
+        "after the due date of furnishing of the return under section 39 for the "
+        "month of September following the end of financial year to which such "
+        "invoice or invoice relating to such debit note pertains or furnishing "
+        "of the relevant annual return"
+    )
+    if bad not in text:
+        return text
+    return text.replace(bad, good, 1)
+
+
 def _load_base_state(
     corpus_dir: Path,
     target_work: str,
@@ -4872,6 +4948,10 @@ def _load_base_state(
     component_paths: dict[str, Path] = {}
     store = ComponentStore(target_work, base_as_of)
     paths = _baseline_xml_paths(baseline_dir) if baseline_dir else []
+    if not paths and baseline_dir:
+        component_state = _load_baseline_components_state(baseline_dir, target_work, base_as_of)
+        if component_state is not None:
+            return component_state
     root_dir = baseline_dir if baseline_dir and baseline_dir.is_dir() else corpus_dir
     if not paths:
         paths = _target_xml_paths(corpus_dir, target_work)
@@ -6216,7 +6296,11 @@ def _is_non_gap_rejected_event(event: dict[str, Any]) -> bool:
     if event.get("status") != "rejected":
         return False
     payload = event.get("payload", {})
-    return bool(payload.get("baseline_source_only") or payload.get("metadata_only"))
+    return bool(
+        payload.get("baseline_source_only")
+        or payload.get("metadata_only")
+        or payload.get("stale_consolidated_corpus_repair")
+    )
 
 
 _RE_STATEMENT_OLD_TEXT = re.compile(r"^(Statement\s*-?\s*[\dA-Z]+|DECLARATION)", re.IGNORECASE)

@@ -225,23 +225,7 @@ def create_mcp_server(*, host: str = "127.0.0.1", port: int = 8090) -> FastMCP:
     @server.tool()
     def query_law_as_of_date(act: str, section: str, date: str) -> dict[str, Any]:
         """Query the exact position of law by act name + section number + date. Resolves the citation, reconstructs the provision text at that date, and returns the amendment chain. Example: act='CGST Act', section='16', date='2024-01-01'."""
-        citation = f"section {section} {act}"
-        resolved = service().resolve_citation(citation, limit=5)
-        candidates = resolved.get("candidates", [])
-        if not candidates:
-            return {"status": "not_found", "citation": citation, "date": date, "message": f"Could not resolve '{citation}' to a canonical provision."}
-        # Prefer candidates that exist in the corpus
-        canonical_id = None
-        for c in candidates:
-            if c.get("exists"):
-                canonical_id = c["canonical_id"]
-                break
-        if not canonical_id:
-            canonical_id = candidates[0]["canonical_id"]
-        result = service().get_provision_as_of_date(canonical_id, date=date)
-        result["citation"] = citation
-        result["resolved_canonical_id"] = canonical_id
-        return result
+        return service().query_law_as_of_date(act, section, date)
 
     @server.tool()
     def get_form_structure(form_id: str) -> dict[str, Any]:

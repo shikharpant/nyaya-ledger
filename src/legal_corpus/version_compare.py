@@ -68,10 +68,39 @@ def _read_json(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+_NODE_VERSIONS_CACHE: dict[Path, list[dict[str, Any]]] = {}
+_NODE_VERSIONS_LOCK = __import__("threading").Lock()
+
+
 def read_node_versions(path: Path) -> list[dict[str, Any]]:
+    """Read and cache node_versions.jsonl. Thread-safe via double-checked locking.
+
+    The file is parsed outside the lock (concurrent misses may both parse; the
+    result is identical). The cache write is serialized so the last writer wins
+    cleanly. Call ``invalidate_node_versions_cache`` after regenerating
+    version_history data, or restart the process.
+    """
+    cached = _NODE_VERSIONS_CACHE.get(path)
+    if cached is not None:
+        return cached
     if not path.exists():
         return []
-    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    with _NODE_VERSIONS_LOCK:
+        cached = _NODE_VERSIONS_CACHE.get(path)
+        if cached is not None:
+            return cached
+        _NODE_VERSIONS_CACHE[path] = rows
+    return rows
+
+
+def invalidate_node_versions_cache(path: Path | None = None) -> None:
+    """Clear the node-versions cache. Call after regenerating version_history."""
+    with _NODE_VERSIONS_LOCK:
+        if path is None:
+            _NODE_VERSIONS_CACHE.clear()
+        else:
+            _NODE_VERSIONS_CACHE.pop(path, None)
 
 
 def _version_at(versions: list[dict[str, Any]], date_value: str) -> dict[str, Any] | None:

@@ -29,7 +29,9 @@ TOOL_DESCRIPTIONS = {
     "find_related_provisions": "Find graph-neighbor and semantic-neighbor provisions.",
     "explain_reference_path": "Show graph paths explaining why two provisions are connected.",
     "get_forms_for_rule": "Find GST forms prescribed or referenced by a rule.",
-    "compare_versions": "Placeholder for future amended provision state comparison.",
+    "compare_versions": "Compare a provision's text between two dates using materialized version history.",
+    "get_provision_as_of_date": "Return the provision text in force on a date, with provenance and verification.",
+    "query_law_as_of_date": "Resolve act + section + date into dated provision text with provenance and verification.",
 }
 
 
@@ -77,6 +79,17 @@ class CompareVersionsRequest(BaseModel):
     canonical_id: str
     from_date: str | None = None
     to_date: str | None = None
+
+
+class GetProvisionAsOfDateRequest(BaseModel):
+    canonical_id: str
+    date: str
+
+
+class QueryLawAsOfDateRequest(BaseModel):
+    act: str
+    section: str
+    date: str
 
 
 app = FastAPI(
@@ -168,6 +181,16 @@ def get_forms_for_rule(request: RefRequest) -> dict[str, Any]:
 @app.post("/tools/compare_versions")
 def compare_versions(request: CompareVersionsRequest) -> dict[str, Any]:
     return service().compare_versions(request.canonical_id, from_date=request.from_date, to_date=request.to_date)
+
+
+@app.post("/tools/get_provision_as_of_date")
+def get_provision_as_of_date(request: GetProvisionAsOfDateRequest) -> dict[str, Any]:
+    return service().get_provision_as_of_date(request.canonical_id, date=request.date)
+
+
+@app.post("/tools/query_law_as_of_date")
+def query_law_as_of_date(request: QueryLawAsOfDateRequest) -> dict[str, Any]:
+    return service().query_law_as_of_date(request.act, request.section, request.date)
 
 
 def main() -> int:

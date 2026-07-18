@@ -1393,6 +1393,7 @@ def cmd_version_materialize(args):
         corpus_dir=Path(args.corpus_dir),
         output_dir=Path(args.output_dir),
         write_snapshots=args.write_snapshots,
+        refresh_baseline=args.refresh_baseline,
     )
     console.print_json(json.dumps(manifest, ensure_ascii=False))
 
@@ -1475,6 +1476,18 @@ def cmd_version_reconstruct(args):
         registry_path=Path(args.registry),
     )
     console.print_json(json.dumps(result, ensure_ascii=False))
+
+
+def cmd_version_query_proof_pack(args):
+    """Build a proof pack for an act + section + date query."""
+    from src.legal_corpus.serving import NyayaToolService
+
+    service = NyayaToolService.from_env()
+    proof_pack = service.build_query_proof_pack(act=args.act, section=args.section, date=args.date)
+    output = Path(args.output)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(json.dumps(proof_pack, indent=2, ensure_ascii=False, sort_keys=True), encoding="utf-8")
+    console.print_json(json.dumps({"output": str(output), "final_verdict": proof_pack.get("final_verdict")}, ensure_ascii=False))
 
 
 def cmd_version_surgical_gap_queue(args):
@@ -2461,6 +2474,11 @@ def main():
         action="store_true",
         help="Write dated full XML snapshots in addition to node_versions.jsonl",
     )
+    p_version_materialize.add_argument(
+        "--refresh-baseline",
+        action="store_true",
+        help="Rebuild the configured baseline from corpus XML before materialization.",
+    )
     p_version_materialize.set_defaults(func=cmd_version_materialize)
 
     p_version_context_recovery = version_sub.add_parser(
@@ -2553,6 +2571,16 @@ def main():
         help="Curated statute identity registry JSON",
     )
     p_version_reconstruct.set_defaults(func=cmd_version_reconstruct)
+
+    p_version_query_proof_pack = version_sub.add_parser(
+        "query-proof-pack",
+        help="Build a proof pack for an act + section + date query",
+    )
+    p_version_query_proof_pack.add_argument("--act", required=True, help="Act name, e.g. CGST Act")
+    p_version_query_proof_pack.add_argument("--section", required=True, help="Section number, e.g. 16")
+    p_version_query_proof_pack.add_argument("--date", required=True, help="As-of date YYYY-MM-DD")
+    p_version_query_proof_pack.add_argument("--output", required=True, help="Output proof-pack JSON")
+    p_version_query_proof_pack.set_defaults(func=cmd_version_query_proof_pack)
 
     p_version_surgical_queue = version_sub.add_parser(
         "surgical-gap-queue",

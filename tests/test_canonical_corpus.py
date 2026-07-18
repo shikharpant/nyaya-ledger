@@ -5268,6 +5268,157 @@ def test_get_provision_as_of_date_returns_not_found_for_pre_existence(tmp_path):
     assert result["text"] == ""
 
 
+def _live_tool_service() -> NyayaToolService:
+    return NyayaToolService(falkor_port=0)
+
+
+def test_get_provision_as_of_date_section16_golden_texts():
+    service = _live_tool_service()
+    section_id = "/in/union/acts/cgst-act-2017/section/16"
+
+    baseline = service.get_provision_as_of_date(section_id, date="2018-01-01")
+    assert baseline["status"] == "ok"
+    assert baseline["verification"]["verdict"] in {"exact", "exact_with_formatting_debt"}
+    assert "due date of furnishing of the return under section 39 for the month of September" in baseline["text"]
+    assert "after the following the end" not in baseline["text"]
+    assert "(aa)" not in baseline["text"]
+    assert "(ba)" not in baseline["text"]
+
+    as_of_2024 = service.get_provision_as_of_date(section_id, date="2024-01-01")
+    assert as_of_2024["status"] == "ok"
+    assert as_of_2024["verification"]["verdict"] == "exact"
+    assert "(aa)" in as_of_2024["text"]
+    assert "(ba)" in as_of_2024["text"]
+    assert "thirtieth day of November" in as_of_2024["text"]
+    assert "(5) Notwithstanding" not in as_of_2024["text"]
+
+    latest = service.get_provision_as_of_date(section_id, date="2026-07-07")
+    assert latest["status"] == "ok"
+    assert latest["verification"]["verdict"] == "exact"
+    assert "(5) Notwithstanding" in latest["text"]
+    assert "(6) Where registration" in latest["text"]
+
+
+def test_get_provision_as_of_date_section16_has_no_igst_contamination():
+    service = _live_tool_service()
+    result = service.get_provision_as_of_date(
+        "/in/union/acts/cgst-act-2017/section/16",
+        date="2024-01-01",
+    )
+    assert result["status"] == "ok"
+    assert "authorised operations" not in result["text"]
+    assert "zero rated" not in result["text"].lower()
+
+
+def test_query_law_as_of_date_matches_direct_section16_lookup():
+    service = _live_tool_service()
+    section_id = "/in/union/acts/cgst-act-2017/section/16"
+    direct = service.get_provision_as_of_date(section_id, date="2024-01-01")
+    resolved = service.query_law_as_of_date("CGST Act", "16", "2024-01-01")
+
+    assert resolved["status"] == "ok"
+    assert resolved["resolved_canonical_id"] == section_id
+    assert resolved["text"] == direct["text"]
+    assert resolved["version_id"] == direct["version_id"]
+    assert resolved["verification"]["verdict"] == direct["verification"]["verdict"]
+
+
+def test_query_law_as_of_date_rejects_invalid_missing_and_ambiguous_inputs(monkeypatch):
+    service = _live_tool_service()
+    section_id = "/in/union/acts/cgst-act-2017/section/16"
+
+    invalid = service.get_provision_as_of_date(section_id, date="2024-99-01")
+    assert invalid["status"] == "invalid_date"
+    assert invalid["verification"]["verdict"] == "failed_verification"
+
+    pre_existence = service.get_provision_as_of_date(section_id, date="2010-01-01")
+    assert pre_existence["status"] == "not_found"
+
+    missing = service.get_provision_as_of_date("/in/union/acts/cgst-act-2017/section/999", date="2024-01-01")
+    assert missing["status"] == "not_found"
+
+    monkeypatch.setattr(
+        service,
+        "resolve_citation",
+        lambda _citation, limit=5: {
+            "candidates": [
+                {"canonical_id": "/in/union/acts/cgst-act-2017/section/16", "exists": True},
+                {"canonical_id": "/in/union/acts/igst-act-2017/section/16", "exists": True},
+            ]
+        },
+    )
+    ambiguous = service.query_law_as_of_date("GST Act", "16", "2024-01-01")
+    assert ambiguous["status"] == "ambiguous_citation"
+    assert ambiguous["verification"]["blocking_reasons"] == ["ambiguous_citation"]
+
+
+def test_get_provision_as_of_date_verification_downgrades_status(monkeypatch):
+    service = _live_tool_service()
+
+    monkeypatch.setattr(
+        service,
+        "_verification_for_result",
+        lambda **_kwargs: {
+            "verdict": "ok_with_gaps",
+            "checks": {"coverage_gap": {"status": "failed"}},
+            "blocking_reasons": ["coverage_gap"],
+        },
+    )
+    result = service.get_provision_as_of_date(
+        "/in/union/acts/cgst-act-2017/section/16",
+        date="2024-01-01",
+    )
+    assert result["status"] == "ok_with_gaps"
+
+
+def test_query_law_as_of_date_manifest_path_consistency():
+    service = _live_tool_service()
+    result = service.query_law_as_of_date("CGST Act", "16", "2024-01-01")
+    manifest_check = result["verification"]["checks"]["manifest_consistency"]
+
+    assert manifest_check["status"] == "passed"
+    assert not any("/tmp/" in value for value in manifest_check["paths"].values())
+    assert manifest_check["manifest_coverage_gap_count"] == manifest_check["actual_gap_count"]
+
+
+def test_proof_pack_section16_schema_and_hash():
+    service = _live_tool_service()
+    proof_pack = service.build_query_proof_pack(act="CGST Act", section="16", date="2024-01-01")
+
+    assert proof_pack["request"] == {"act": "CGST Act", "section": "16", "date": "2024-01-01"}
+    assert proof_pack["resolved_canonical_id"] == "/in/union/acts/cgst-act-2017/section/16"
+    assert proof_pack["final_verdict"] == "exact"
+    assert proof_pack["returned_text_hash"] == proof_pack["mcp_transcript"][1]["result"]["text_sha256"]
+    assert proof_pack["source_span_verification"]["status"] == "passed"
+    assert proof_pack["official_source_refs"]
+
+
+def test_query_law_as_of_date_rest_parity():
+    from scripts import serve_api
+
+    previous = serve_api._SERVICE
+    service = _live_tool_service()
+    serve_api._SERVICE = service
+    try:
+        rest_result = serve_api.query_law_as_of_date(
+            serve_api.QueryLawAsOfDateRequest(act="CGST Act", section="16", date="2024-01-01")
+        )
+        direct = service.query_law_as_of_date("CGST Act", "16", "2024-01-01")
+        assert rest_result["status"] == direct["status"]
+        assert rest_result["version_id"] == direct["version_id"]
+        assert rest_result["verification"]["verdict"] == direct["verification"]["verdict"]
+
+        provision_result = serve_api.get_provision_as_of_date(
+            serve_api.GetProvisionAsOfDateRequest(
+                canonical_id="/in/union/acts/cgst-act-2017/section/16",
+                date="2024-01-01",
+            )
+        )
+        assert provision_result["verification"]["verdict"] == "exact"
+    finally:
+        serve_api._SERVICE = previous
+
+
 def test_list_amendments_returns_ordered_chain(tmp_path):
     """list_amendments returns amendments ordered by effective date."""
     service = _seed_tool_service(tmp_path)

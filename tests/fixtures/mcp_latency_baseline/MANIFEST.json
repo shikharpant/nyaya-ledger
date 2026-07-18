@@ -1,0 +1,117 @@
+{
+  "act_s16_2024": {
+    "tool": "query_law_as_of_date",
+    "args": {
+      "act": "CGST Act",
+      "section": "16",
+      "date": "2024-01-01"
+    },
+    "sha256": "0dff9512ebfc622d0bae421e1083bcee79e5ac5718d363fcdd233cf72009ed91",
+    "bytes": 14167
+  },
+  "act_s16_2017": {
+    "tool": "query_law_as_of_date",
+    "args": {
+      "act": "CGST Act",
+      "section": "16",
+      "date": "2017-09-01"
+    },
+    "sha256": "e3532a29d519c9b60fe323dea73e793116402cedb48497c175f03a418535e834",
+    "bytes": 8613
+  },
+  "act_s16gap": {
+    "tool": "query_law_as_of_date",
+    "args": {
+      "act": "CGST Act",
+      "section": "16",
+      "date": "2024-01-01"
+    },
+    "sha256": "0dff9512ebfc622d0bae421e1083bcee79e5ac5718d363fcdd233cf72009ed91",
+    "bytes": 14167
+  },
+  "act_s174": {
+    "tool": "query_law_as_of_date",
+    "args": {
+      "act": "CGST Act",
+      "section": "174",
+      "date": "2024-01-01"
+    },
+    "sha256": "4b9427d67810ec84cbc1fd97bd62069a001cc7e6630849d612ec741a671e1875",
+    "bytes": 9317
+  },
+  "rule_r56": {
+    "tool": "query_law_as_of_date",
+    "args": {
+      "act": "CGST Rules",
+      "section": "56",
+      "date": "2024-01-01"
+    },
+    "sha256": "f4aa5b76e2c2a1ced2aaf89fe0ca1f41fe8567a5bb8774e336da004e4a74e01a",
+    "bytes": 4863
+  },
+  "rule_r21": {
+    "tool": "query_law_as_of_date",
+    "args": {
+      "act": "CGST Rules",
+      "section": "21",
+      "date": "2024-01-01"
+    },
+    "sha256": "7b8881c639ab9538543a447d9812618163a3b9c6ed2a23324978834559c09294",
+    "bytes": 4864
+  },
+  "direct_lookup": {
+    "tool": "lookup_provision",
+    "args": {
+      "canonical_id": "/in/union/acts/cgst-act-2017/section/16",
+      "include_text": true
+    },
+    "sha256": "4e7b2d152338a93513ad9214bc61b38e0028a14edc6dd07c7f4a2e7c3e65cbac",
+    "bytes": 5213
+  },
+  "compare_s16": {
+    "tool": "compare_versions",
+    "args": {
+      "canonical_id": "/in/union/acts/cgst-act-2017/section/16",
+      "from_date": "2017-07-01",
+      "to_date": "2024-01-01"
+    },
+    "sha256": "e7407488bab9709c9b3468712256d1fb36c820022fbc20f1aad075b58c1c7aa1",
+    "bytes": 26531
+  },
+  "timeline_s16": {
+    "tool": "get_provision_timeline",
+    "args": {
+      "canonical_id": "/in/union/acts/cgst-act-2017/section/16"
+    },
+    "sha256": "a76390255d85dcc82986473f7063d5dbb4b18021beda2259affee3938b8853ca",
+    "bytes": 4240
+  },
+  "amendments_s16": {
+    "tool": "list_amendments",
+    "args": {
+      "canonical_id": "/in/union/acts/cgst-act-2017/section/16"
+    },
+    "sha256": "7f71c3d01009103df69cf52bba7d7dd4e109f728cb83980e70c40639171c9e40",
+    "bytes": 2185
+  },
+  "notfound": {
+    "tool": "query_law_as_of_date",
+    "args": {
+      "act": "CGST Act",
+      "section": "999",
+      "date": "2024-01-01"
+    },
+    "sha256": "4e9ee0e4e764f6fb76c4cca709d630f68bfd3d52d1129b15b4688ed0570d22a7",
+    "bytes": 649
+  },
+  "date_pre_baseline": {
+    "tool": "query_law_as_of_date",
+    "args": {
+      "act": "CGST Act",
+      "section": "16",
+      "date": "2010-01-01"
+    },
+    "sha256": "29fa789b3c88e0ecd8387534d72ee1c25151f875aa8b224915df61a780dc30ea",
+    "bytes": 646
+  }
+}
