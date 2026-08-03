@@ -34,6 +34,18 @@ def service() -> NyayaToolService:
     return _SERVICE
 
 
+_RATE_LAW_SERVICE: Any = None
+
+
+def rate_law_service() -> Any:
+    """Lazily-built singleton RateLawService (rate/law-change MCP tools)."""
+    global _RATE_LAW_SERVICE
+    if _RATE_LAW_SERVICE is None:
+        from src.legal_corpus.rate_law_mcp import RateLawService
+        _RATE_LAW_SERVICE = RateLawService()
+    return _RATE_LAW_SERVICE
+
+
 def _optional(value: str) -> str | None:
     clean = value.strip()
     return clean or None
@@ -272,6 +284,79 @@ def create_mcp_server(*, host: str = "127.0.0.1", port: int = 8090) -> FastMCP:
             "form_status": form_status,
             "has_sections": has_sections,
         }
+
+    # ── Rate-change tools (deterministic retrieval over rate schedules) ──
+
+    @server.tool()
+    def get_rate_for_hsn(hsn_code: str, as_of_date: str, jurisdiction: str = "") -> dict[str, Any]:
+        """Return the applicable GST rate entry(ies) for an HSN code on a date.
+
+        Covers goods + cess schedules (HSN-keyed). Normalizes HSN (4/6/8-digit,
+        leading zeros, spaces). Returns rate breakdown, conditions, and the
+        notification that set the rate. Returns result=unresolved if no entry
+        covers the date -- never silently uses the current rate.
+        """
+        return rate_law_service().get_rate_for_hsn(
+            hsn_code, as_of_date, jurisdiction=_optional(jurisdiction))
+
+    @server.tool()
+    def trace_rate_changes(hsn_code: str, from_date: str = "", to_date: str = "") -> dict[str, Any]:
+        """Chronological rate changes for an HSN: effective date, old/new rate,
+        amending notification, operation, retrospective flag."""
+        return rate_law_service().trace_rate_changes(
+            hsn_code, from_date=_optional(from_date), to_date=_optional(to_date))
+
+    @server.tool()
+    def get_rate_conditions(rate_entry_id_or_hsn_plus_date: str, as_of_date: str = "") -> dict[str, Any]:
+        """All conditions, provisos, explanations and exemptions for a rate entry.
+
+        Accepts locators like '11/2017-ct-rate::sno=3', '1/2017::hsn=0101', or
+        '1/2017::schedule=I'. Returns the entry description plus inherited
+        schedule heading, opening paragraph and explanations.
+        """
+        return rate_law_service().get_rate_conditions(
+            rate_entry_id_or_hsn_plus_date, as_of_date=_optional(as_of_date))
+
+    @server.tool()
+    def compare_rates(hsn_codes: list[str], as_of_date: str) -> dict[str, Any]:
+        """Side-by-side rate comparison for multiple HSN codes on one date."""
+        return rate_law_service().compare_rates(hsn_codes, as_of_date)
+
+    # ── Law-change tools (event-sourced statute version history) ──
+
+    @server.tool()
+    def get_law_as_of(citation: str, as_of_date: str) -> dict[str, Any]:
+        """Provision text exactly as it stood on a date, with version_id,
+        text_sha256, applicability window, event_chain and source_basis.
+        Returns result=unresolved if no version covers the date."""
+        return rate_law_service().get_law_as_of(citation, as_of_date)
+
+    @server.tool()
+    def trace_amendments(citation: str, include_unreviewed: bool = False) -> dict[str, Any]:
+        """Chronological reviewed amendments: effective date, amending instrument,
+        operation, old->new diff, retrospective flag. Unreviewed candidate events
+        appear ONLY in unreviewed_candidates[] when include_unreviewed=true, never
+        in the main result."""
+        return rate_law_service().trace_amendments(citation, include_unreviewed=include_unreviewed)
+
+    @server.tool()
+    def get_amendment_instrument(amendment_id_or_citation_plus_date: str) -> dict[str, Any]:
+        """Return the Finance Act / Notification / Circular behind an amendment
+        (its document_id, text, commencement date). Accepts '<canonical_id>@<date>'."""
+        return rate_law_service().get_amendment_instrument(amendment_id_or_citation_plus_date)
+
+    @server.tool()
+    def get_commencement_chain(citation: str, amendment_date: str) -> dict[str, Any]:
+        """Enactment date, commencement date, retrospective operation, saving and
+        transition provisions for an amendment. Flags commencement_unspecified
+        where the commencement is absent."""
+        return rate_law_service().get_commencement_chain(citation, amendment_date)
+
+    @server.tool()
+    def compare_law_versions(citation: str, version_a_date: str, version_b_date: str) -> dict[str, Any]:
+        """Text of a provision at two dates, a unified diff, and the amendment
+        event(s) responsible for the change between them."""
+        return rate_law_service().compare_law_versions(citation, version_a_date, version_b_date)
 
     return server
 
