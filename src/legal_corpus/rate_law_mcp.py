@@ -235,6 +235,22 @@ class RateLawService:
                 return t + suffix
         return t
 
+    def _instrument_type(self, target_notification: str) -> str:
+        """Return the base schedule's instrument_type (e.g. goods_rate /
+        goods_exempt / service_rate). Empty string when unknown."""
+        target_notification = self._normalize_target(target_notification)
+        base_name = BASE_JSON_MAP.get(target_notification)
+        if not base_name:
+            return ""
+        base_path = self.rate_data_root / Path(base_name).name
+        if not base_path.exists():
+            return ""
+        try:
+            with open(base_path, encoding="utf-8") as f:
+                return str(json.load(f).get("instrument_type") or "")
+        except (OSError, json.JSONDecodeError):
+            return ""
+
     def _base_effective_from(self, target_notification: str) -> str:
         """Read the base schedule's effective_from (when the rate first exists)."""
         target_notification = self._normalize_target(target_notification)
@@ -267,6 +283,13 @@ class RateLawService:
             if not snap:
                 continue
             active = snap.get("active_notification") or target
+            instrument_type = self._instrument_type(target)
+            # Distinguish positive rate schedules from exemption/nil notifications.
+            # The same HSN can appear in both with mutually-exclusive conditions
+            # (e.g. HSN 0303: pre-packaged fish taxed at 2.5%, loose fish exempt).
+            is_exempt = "exempt" in instrument_type or instrument_type in (
+                "goods_exempt", "service_exempt")
+            kind = "exemption" if is_exempt else "rate"
             for sid, sched in (snap.get("schedules") or {}).items():
                 for entry in sched.get("entries") or []:
                     if entry.get("is_omitted"):
@@ -276,6 +299,8 @@ class RateLawService:
                     rate_pct = float(entry.get("rate_pct") or sched.get("rate_pct") or 0.0)
                     matches.append({
                         "notification": active,
+                        "instrument_type": instrument_type,
+                        "notification_kind": kind,
                         "schedule_id": sid,
                         "sno": entry.get("sno", ""),
                         "tariff_item": entry.get("tariff_item", ""),
@@ -298,8 +323,18 @@ class RateLawService:
                 source_refs=source_refs,
                 hsn_code=hsn_code, normalized_hsn=norm, as_of_date=as_of_date, matches=[],
             )
+        # Flag conditional-exemption conflicts: HSN matches both a positive rate
+        # schedule and an exemption notification (legally distinct treatments).
+        kinds = {m["notification_kind"] for m in matches}
+        warning = None
+        if {"rate", "exemption"} <= kinds:
+            warning = (
+                f"HSN {norm} appears in both a rate schedule and an exemption "
+                "notification; the applicable treatment depends on the entry "
+                "conditions (see each match's description)."
+            )
         return self._envelope(
-            result="ok", source_refs=source_refs,
+            result="ok", coverage_warning=warning, source_refs=source_refs,
             hsn_code=hsn_code, normalized_hsn=norm, as_of_date=as_of_date,
             matches=matches,
         )
@@ -645,9 +680,16 @@ class RateLawService:
             )
         basis = row.get("source_basis") or {}
         legal_time = row.get("legal_time") or (row.get("event") or {}).get("legal_time") or {}
+        applicability = row.get("applicability_start") or row.get("valid_from")
+        # The version history stores the instrument's notification date as
+        # applicability_start; enactment_date is not separately captured in
+        # node_versions, so default it to the applicability date and warn.
+        enactment = (legal_time.get("enactment_date")
+                     or legal_time.get("publication_date")
+                     or applicability)
         commencement = {
-            "enactment_date": legal_time.get("enactment_date") or legal_time.get("publication_date"),
-            "commencement_date": row.get("applicability_start") or row.get("valid_from"),
+            "enactment_date": enactment,
+            "commencement_date": applicability,
             "retrospective_operation": bool(legal_time.get("retrospective")),
             "saving_clauses": _extract_clauses(row.get("text", ""), ("saving", "save", "notwithstand")),
             "transition_provisions": _extract_clauses(row.get("text", ""), ("transition", "transitional")),
@@ -655,10 +697,19 @@ class RateLawService:
         }
         gaps: list[str] = []
         warning = None
+        if not legal_time:
+            # No explicit legal_time in the version row: enactment/commencement
+            # both fall back to the stored notification date. The statutory
+            # appointed date can differ (e.g. GST rules notified 2017-06-19 but
+            # in force from 2017-07-01) and is not separately captured.
+            warning = ("enactment_date and commencement_date both reflect the "
+                       "instrument's notification date; the statutory appointed "
+                       "date may differ and is not separately captured")
+            gaps.append("no explicit legal_time in version row; using notification date")
         if not commencement["commencement_date"]:
             commencement["commencement_date"] = None
             commencement["commencement_status"] = "commencement_unspecified"
-            gaps.append("commencement date absent; enactment may equal commencement")
+            gaps.append("commencement date absent")
             warning = "commencement date unspecified"
         return self._envelope(
             result="ok",

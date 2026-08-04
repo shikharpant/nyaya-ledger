@@ -72,6 +72,26 @@ def test_get_rate_for_hsn_jurisdiction_filter_and_temporal(svc):
     assert 0 < len(narrow["matches"]) <= len(broad["matches"])
 
 
+def test_get_rate_for_hsn_distinguishes_rate_from_exemption(svc):
+    # HSN 0303 (fish) is conditionally split: pre-packaged taxed at 2.5% under
+    # 1/2017 (goods_rate), loose fish exempt under 2/2017 (goods_exempt). The
+    # tool must label instrument_type/notification_kind so the two are not
+    # confused as competing flat rates. Ground truth: Notification 2/2017-Central
+    # Tax (Rate) is an exemption notification ("hereby exempts ... goods").
+    r = svc.get_rate_for_hsn("0303", "2024-01-01")
+    assert r["result"] == "ok"
+    kinds = {m["notification_kind"] for m in r["matches"]}
+    instrument_types = {m["instrument_type"] for m in r["matches"]}
+    assert {"rate", "exemption"} <= kinds
+    assert "goods_rate" in instrument_types and "goods_exempt" in instrument_types
+    # the taxable entry carries the 2.5% CGST rate; the exempt one is 0%
+    rate_entry = next(m for m in r["matches"] if m["notification_kind"] == "rate")
+    assert rate_entry["rate_pct"] == 2.5
+    exempt_entry = next(m for m in r["matches"] if m["notification_kind"] == "exemption")
+    assert exempt_entry["rate_pct"] == 0.0
+    assert r["coverage_warning"]  # conflict surfaced
+
+
 # ───────────────────────── trace_rate_changes ─────────────────────────
 
 def test_trace_rate_changes_happy_path(svc):
@@ -221,8 +241,13 @@ def test_get_commencement_chain_happy_path(svc):
     r = svc.get_commencement_chain(RULE_10, "2022-01-01")
     assert r["result"] == "ok"
     comm = r["commencement"]
-    assert comm["commencement_date"]  # CGST rules commenced 2017-06-19
+    # enactment_date must be populated (the instrument notification date), not None.
+    assert comm["enactment_date"] == "2017-06-19"
+    assert comm["commencement_date"]
     assert "saving_clauses" in comm and "transition_provisions" in comm
+    # The corpus stores notification dates; the tool must warn that the statutory
+    # appointed date (CGST rules in force from 2017-07-01) may differ.
+    assert r["coverage_warning"] and "notification date" in r["coverage_warning"]
 
 
 def test_get_commencement_chain_unknown_unresolved(svc):

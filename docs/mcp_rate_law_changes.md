@@ -200,3 +200,45 @@ versions / after supersession). Rate tests use
 `tests/fixtures/service_checkpoint_closure/rate-schedules/` + the goods base
 JSONs; law tests use the CGST rules version dir. Tests inject paths and assert
 the envelope fields.
+
+## 9. Audit findings & corrections (2026-08-03)
+
+Validated against the canonical corpus XML and real GST statute/notification
+facts. Two correctness issues found and fixed:
+
+### 9.1 Rate-vs-exemption conflation (fixed)
+The same HSN legitimately appears in **both** a positive rate schedule
+(`1/2017-ct-rate`, `instrument_type=goods_rate`) and an exemption notification
+(`2/2017-ct-rate`, `instrument_type=goods_exempt`) under **mutually exclusive
+conditions**. Ground truth — Notification 2/2017-Central Tax (Rate) opens
+"hereby exempts intra-State supplies of goods...". Example, HSN 0303 (fish):
+
+- 1/2017 sched I @ 2.5% CGST — "All goods [other than fresh or chilled], **pre-packaged and labelled**"
+- 2/2017 sched I @ 0.0% — "All goods [other than fresh or chilled], **other than pre-packaged and labelled**"
+
+Originally `get_rate_for_hsn` reported both as flat competing rates. Fixed:
+every match now carries `instrument_type` + `notification_kind` (`rate` vs
+`exemption`), and a `coverage_warning` is emitted when an HSN matches both.
+Verified also for HSN 1006 (rice) — same pre-packaged-vs-loose conditional
+split, matching the 2022 GST amendment. **Law text retrieval is accurate**
+(CGST Act s16 reconstructed text matches the statute) and `trace_amendments`
+returns the real amending Finance Acts (2020–2024) with correct effective dates.
+
+### 9.2 Commencement date semantics (fixed)
+The version history stores the instrument's **notification date** as
+`applicability_start` (e.g. CGST Rules 2017 notified 2017-06-19 via G.S.R.
+610(E)). The statutory **appointed/commencement** date is not separately
+captured (CGST rules legally came into force 2017-07-01). Originally
+`get_commencement_chain` returned `enactment_date=None` and silently echoed the
+notification date as commencement. Fixed: `enactment_date` is populated from the
+notification date, and a `coverage_warning` states that both fields reflect the
+notification date and the statutory appointed date may differ. No statutory
+appointed date is fabricated.
+
+### 9.3 Known minor limitations (not bugs)
+- Some `trace_amendments` rows cite a `derived/...` reconciliation-source path
+  rather than a clean corpus instrument id (a materializer provenance artifact).
+- `operation` may show internal ops like `SPLICE` alongside legal ops
+  (`SUBSTITUTE`/`OMIT`); these come straight from the event ledger.
+- A few HSNs in wide comma-list entries can produce duplicate-looking matches
+  across schedule slabs; the data is not wrong but deduplication is not applied.
